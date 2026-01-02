@@ -170,3 +170,37 @@ def revoke_license(
     )
     
     return license
+
+# 删除授权
+@router.delete("/{license_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_license(
+    license_id: int,
+    db: Session = Depends(get_db),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    license = db.query(License).filter(License.id == license_id).first()
+    if not license:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="License not found"
+        )
+    
+    # 删除关联的客户端记录
+    from app.models.client import Client
+    db.query(Client).filter(Client.license_id == license_id).delete()
+    
+    # 记录审计日志
+    create_audit_log(
+        db=db,
+        admin_username=current_admin.username,
+        action="删除",
+        target_type="授权",
+        target_id=license.id,
+        target_instance=license
+    )
+    
+    # 删除授权
+    db.delete(license)
+    db.commit()
+    
+    return None

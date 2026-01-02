@@ -32,29 +32,62 @@
             </td>
             <td>{{ formatDate(client.created_at) }}</td>
             <td class="action-buttons">
-              <button 
-                v-if="client.status === 'disabled'" 
-                class="enable-btn" 
-                @click="enableClient(client.id)"
-                :disabled="isLoading"
+              <n-popconfirm 
+                v-if="client.status === 'disabled'"
+                placement="top"
+                positive-text="确定"
+                negative-text="取消"
+                @positive-click="enableClient(client.id)"
               >
-                启用
-              </button>
-              <button 
-                v-else 
-                class="disable-btn" 
-                @click="disableClient(client.id)"
-                :disabled="isLoading"
+                <template #trigger>
+                  <button 
+                    class="enable-btn" 
+                    :disabled="isLoading"
+                  >
+                    启用
+                  </button>
+                </template>
+                <template #default>
+                  <div>确定要启用该客户端吗？</div>
+                </template>
+              </n-popconfirm>
+              <n-popconfirm 
+                v-else
+                placement="top"
+                positive-text="确定"
+                negative-text="取消"
+                @positive-click="disableClient(client.id)"
               >
-                禁用
-              </button>
-              <button 
-                class="delete-btn" 
-                @click="deleteClient(client.id)"
-                :disabled="isLoading"
+                <template #trigger>
+                  <button 
+                    class="disable-btn" 
+                    :disabled="isLoading"
+                  >
+                    禁用
+                  </button>
+                </template>
+                <template #default>
+                  <div>确定要禁用该客户端吗？</div>
+                </template>
+              </n-popconfirm>
+              <n-popconfirm 
+                placement="top"
+                positive-text="确定"
+                negative-text="取消"
+                @positive-click="deleteClient(client.id)"
               >
-                删除
-              </button>
+                <template #trigger>
+                  <button 
+                    class="delete-btn" 
+                    :disabled="isLoading"
+                  >
+                    删除
+                  </button>
+                </template>
+                <template #default>
+                  <div>确定要删除该客户端吗？</div>
+                </template>
+              </n-popconfirm>
             </td>
           </tr>
         </tbody>
@@ -68,6 +101,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { NPopconfirm } from 'naive-ui'
 import api from '@/api'
 
 // 客户端列表
@@ -98,10 +132,6 @@ const fetchClients = async () => {
 
 // 禁用客户端
 const disableClient = async (id: number) => {
-  if (!confirm('确定要禁用该客户端吗？')) {
-    return
-  }
-  
   isLoading.value = true
   try {
     await api.post(`/admin/client/${id}/disable`)
@@ -116,10 +146,6 @@ const disableClient = async (id: number) => {
 
 // 启用客户端
 const enableClient = async (id: number) => {
-  if (!confirm('确定要启用该客户端吗？')) {
-    return
-  }
-  
   isLoading.value = true
   try {
     await api.post(`/admin/client/${id}/enable`)
@@ -134,10 +160,6 @@ const enableClient = async (id: number) => {
 
 // 删除客户端
 const deleteClient = async (id: number) => {
-  if (!confirm('确定要删除该客户端吗？')) {
-    return
-  }
-  
   isLoading.value = true
   try {
     await api.delete(`/admin/client/${id}`)

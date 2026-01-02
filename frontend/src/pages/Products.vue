@@ -30,13 +30,24 @@
             <td>{{ formatDate(product.created_at) }}</td>
             <td class="action-buttons">
               <button class="edit-btn" @click="openEditModal(product)">编辑</button>
-              <button 
-                class="delete-btn" 
-                @click="deleteProduct(product.id)"
-                :disabled="isLoading"
+              <n-popconfirm 
+                placement="top"
+                positive-text="确定"
+                negative-text="取消"
+                @positive-click="deleteProduct(product.id)"
               >
-                删除
-              </button>
+                <template #trigger>
+                  <button 
+                    class="delete-btn" 
+                    :disabled="isLoading"
+                  >
+                    删除
+                  </button>
+                </template>
+                <template #default>
+                  <div>确定要删除该产品吗？</div>
+                </template>
+              </n-popconfirm>
             </td>
           </tr>
         </tbody>
@@ -147,6 +158,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { NPopconfirm } from 'naive-ui'
 import api from '@/api'
 
 // 产品列表
@@ -242,10 +254,6 @@ const updateProduct = async () => {
 
 // 删除产品
 const deleteProduct = async (id: number) => {
-  if (!confirm('确定要删除该产品吗？')) {
-    return
-  }
-  
   isLoading.value = true
   try {
     await api.delete(`/admin/product/${id}`)

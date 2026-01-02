@@ -98,7 +98,9 @@ def activate(
     db.commit()
     
     # 8. 生成License Token
-    expire_at = int(license.expire_at.timestamp())
+    # 将date对象转换为datetime对象，然后获取timestamp
+    expire_datetime = datetime.combine(license.expire_at, datetime.min.time())
+    expire_at = int(expire_datetime.timestamp())
     token = generate_license_token(
         product=license.product_code,
         license_key=license.license_key,
@@ -255,11 +257,13 @@ def status(
             )
         
         # 7. 返回状态
+        # 将date对象转换为datetime对象，然后获取timestamp
+        expire_datetime = datetime.combine(license.expire_at, datetime.min.time())
         return StatusResponse(
             success=True,
             message="License is valid",
             status="valid",
-            expire_at=int(license.expire_at.timestamp())
+            expire_at=int(expire_datetime.timestamp())
         )
     except Exception as e:
         return StatusResponse(

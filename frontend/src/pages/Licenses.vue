@@ -34,21 +34,43 @@
             <td>{{ formatDate(license.created_at) }}</td>
             <td class="action-buttons">
               <button class="edit-btn" @click="openEditModal(license)">编辑</button>
-              <button 
-                v-if="license.status !== 'revoked'" 
-                class="revoke-btn" 
-                @click="revokeLicense(license.id)"
-                :disabled="isLoading"
+              <n-popconfirm 
+                placement="top"
+                positive-text="确定"
+                negative-text="取消"
+                @positive-click="revokeLicense(license.id)"
               >
-                吊销
-              </button>
-              <button 
-                class="delete-btn" 
-                @click="deleteLicense(license.id)"
-                :disabled="isLoading"
+                <template #trigger>
+                  <button 
+                    v-if="license.status !== 'revoked'" 
+                    class="revoke-btn" 
+                    :disabled="isLoading"
+                  >
+                    吊销
+                  </button>
+                </template>
+                <template #default>
+                  <div>确定要吊销该授权吗？</div>
+                </template>
+              </n-popconfirm>
+              <n-popconfirm 
+                placement="top"
+                positive-text="确定"
+                negative-text="取消"
+                @positive-click="deleteLicense(license.id)"
               >
-                删除
-              </button>
+                <template #trigger>
+                  <button 
+                    class="delete-btn" 
+                    :disabled="isLoading"
+                  >
+                    删除
+                  </button>
+                </template>
+                <template #default>
+                  <div>确定要删除该授权吗？</div>
+                </template>
+              </n-popconfirm>
             </td>
           </tr>
         </tbody>
@@ -194,6 +216,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { NDialog, NButton, NCard, NPopconfirm } from 'naive-ui'
 import api from '@/api'
 
 // 授权列表
@@ -318,10 +341,6 @@ const updateLicense = async () => {
 
 // 吊销授权
 const revokeLicense = async (id: number) => {
-  if (!confirm('确定要吊销该授权吗？')) {
-    return
-  }
-  
   isLoading.value = true
   try {
     await api.post(`/admin/license/${id}/revoke`)
@@ -336,10 +355,6 @@ const revokeLicense = async (id: number) => {
 
 // 删除授权
 const deleteLicense = async (id: number) => {
-  if (!confirm('确定要删除该授权吗？')) {
-    return
-  }
-  
   isLoading.value = true
   try {
     await api.delete(`/admin/license/${id}`)
