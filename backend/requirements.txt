@@ -1,33 +1,33 @@
-# hex-auth 后端依赖
-# 经过验证的兼容版本组合
+# hex-auth backend dependencies
+# Validated compatible version combinations
 
-# 核心框架
-fastapi==0.104.1         # 与本地运行环境匹配的版本
-uvicorn==0.24.0          # 稳定的ASGI服务器
+# Core Framework
+fastapi==0.104.1
+uvicorn==0.24.0
 
-# 数据库
-sqlalchemy==2.0.23       # ORM框架
-pymysql==1.1.0           # MySQL驱动
-alembic==1.13.1          # 数据库迁移工具
+# Database
+sqlalchemy==2.0.23
+pymysql==1.1.0
+alembic==1.13.1
 
-# 认证与安全
-python-jose[cryptography]==3.3.0  # JWT认证
-passlib[bcrypt]==1.7.4   # 密码哈希
-python-multipart==0.0.6  # 表单处理
-cryptography==46.0.3     # 加密库（python-jose依赖）
+# Authentication and Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+cryptography==46.0.3
 
-# 加密
-pycryptodome==3.20.0     # 加密库
+# Encryption
+pycryptodome==3.20.0
 
-# 配置与工具
-python-dotenv==1.0.0     # 环境变量管理
+# Configuration and Tools
+python-dotenv==1.0.0
 
-# 数据验证
-pydantic==2.7.4          # 数据验证库 v2（本地运行版本）
-pydantic-settings==2.1.0  # 配置管理库
-pydantic-core==2.18.4     # Pydantic核心库
+# Data Validation
+pydantic==2.7.4
+pydantic-settings==2.1.0
+pydantic-core==2.18.4
 
-# 框架依赖
-anyio==3.7.1             # 异步支持库（FastAPI依赖）
-starlette==0.27.0         # ASGI框架（FastAPI依赖）
-typing-extensions==4.14.1 # 类型扩展支持
+# Framework Dependencies
+anyio==3.7.1
+starlette==0.27.0
+typing-extensions==4.14.1
