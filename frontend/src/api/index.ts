@@ -2,8 +2,9 @@ import axios from 'axios'
 import NProgress from 'nprogress'
 
 // 创建Axios实例
+// 使用相对路径，请求会自动通过Nginx代理转发
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: '',
   timeout: 10000
 })
 
