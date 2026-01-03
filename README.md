@@ -119,7 +119,38 @@ hex-auth/
 
 ## 部署
 
-### Docker部署
+### 部署选项
+
+#### 选项1：一键部署（推荐）
+
+这是最简单的部署方式，适用于已安装MySQL和Nginx的服务器：
+
+1. **给脚本添加执行权限**
+   ```bash
+   chmod +x deploy.sh
+   ```
+
+2. **执行一键部署脚本**
+   ```bash
+   ./deploy.sh
+   ```
+
+3. **按照脚本提示操作**
+   - 脚本会自动检查Docker和Docker Compose依赖
+   - 创建并配置.env文件
+   - 创建简化的docker-compose-easy.yml文件
+   - 构建并启动前后端服务
+   - 显示访问地址和Nginx配置建议
+
+4. **配置宿主机Nginx**
+   - 脚本会输出Nginx配置建议
+   - 将配置添加到`/etc/nginx/conf.d/hex-auth.conf`
+   - 检查配置：`nginx -t`
+   - 重启Nginx：`systemctl restart nginx`
+
+#### 选项2：完整Docker部署（包含MySQL）
+
+如果您的服务器没有安装MySQL，可以使用完整的Docker部署方案，包含数据库服务：
 
 1. **创建docker-compose.yml文件**
    ```yaml
@@ -170,71 +201,248 @@ hex-auth/
      mysql-data:
    ```
 
-2. **创建后端Dockerfile**
-   ```dockerfile
-   # backend/Dockerfile
-   FROM python:3.12
-   
-   WORKDIR /app
-   
-   COPY requirements.txt .
-   RUN pip install -r requirements.txt
-   
-   COPY . .
-   
-   CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+2. **启动服务**
+   ```bash
+   docker-compose up -d
    ```
 
-3. **创建前端Dockerfile**
-   ```dockerfile
-   # frontend/Dockerfile
-   FROM node:20 as build
+#### 选项3：前后端Docker部署（连接已有的MySQL）
+
+如果您的服务器已经安装了MySQL，可以使用此方案，只部署前后端服务：
+
+1. **创建docker-compose-separate.yml文件**
+   ```yaml
+   version: '3.8'
    
-   WORKDIR /app
+   # 网络配置
+   networks:
+     hex-auth-network:
+       driver: bridge
+       ipam:
+         config:
+           - subnet: 172.20.0.0/16
    
-   COPY package*.json ./
-   RUN npm install
+   # 后端服务
+   services:
+     # 后端API服务
+     backend:
+       build:
+         context: ./backend
+         dockerfile: Dockerfile
+       container_name: hex-auth-backend
+       restart: always
+       networks:
+         - hex-auth-network
+       environment:
+         # 数据库连接配置（连接到宿主机已有的MySQL）
+         DATABASE_URL: "mysql+pymysql://root:password@host.docker.internal:3306/hex_auth"
+         # 或者使用宿主机IP地址
+         # DATABASE_URL: "mysql+pymysql://root:password@192.168.1.100:3306/hex_auth"
+         SECRET_KEY: "your-secret-key"
+         # JWT配置
+         ALGORITHM: "HS256"
+         ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+         # RSA配置
+         RSA_PRIVATE_KEY_PATH: "./keys/private.pem"
+         RSA_PUBLIC_KEY_PATH: "./keys/public.pem"
+       ports:
+         - "8000:8000"
+       volumes:
+         # 挂载RSA密钥目录（如果需要的话）
+         - ./backend/keys:/app/keys:ro
+       extra_hosts:
+         - "host.docker.internal:host-gateway"  # 允许容器访问宿主机
    
-   COPY . .
-   RUN npm run build
-   
-   # 使用Nginx部署
-   FROM nginx:alpine
-   
-   COPY --from=build /app/dist /usr/share/nginx/html
-   COPY nginx.conf /etc/nginx/conf.d/default.conf
-   
-   EXPOSE 80
-   
-   CMD ["nginx", "-g", "daemon off;"]
+     # 前端服务
+     frontend:
+       build:
+         context: ./frontend
+         dockerfile: Dockerfile
+       container_name: hex-auth-frontend
+       restart: always
+       networks:
+         - hex-auth-network
+       ports:
+         - "8080:80"  # 前端容器内部使用80端口，映射到宿主机8080端口
+       depends_on:
+         - backend
+     # 注意：由于宿主机已安装Nginx，这里的前端容器端口将由宿主机Nginx反向代理
    ```
 
-4. **创建前端Nginx配置**
+2. **启动服务**
+   ```bash
+   docker-compose -f docker-compose-separate.yml up -d
+   ```
+
+### 宿主机Nginx配置
+
+如果您的服务器已经安装了Nginx，可以添加以下配置来反向代理到Docker容器：
+
+1. **创建宿主机Nginx配置文件**
    ```nginx
-   # frontend/nginx.conf
+   # 保存到：/etc/nginx/conf.d/hex-auth.conf
+   
+   # 后端API服务配置
    server {
        listen 80;
-       server_name localhost;
+       server_name api.example.com;  # 替换为你的API域名
        
+       # 反向代理到后端Docker容器
        location / {
-           root /usr/share/nginx/html;
-           index index.html;
-           try_files $uri $uri/ /index.html;
-       }
-       
-       location /api {
-           proxy_pass http://backend:8000;
+           proxy_pass http://localhost:8000;  # 后端容器映射到宿主机8000端口
            proxy_set_header Host $host;
            proxy_set_header X-Real-IP $remote_addr;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   
+   # 前端服务配置
+   server {
+       listen 80;
+       server_name auth.example.com;  # 替换为你的前端域名
+       
+       # 反向代理到前端Docker容器
+       location / {
+           proxy_pass http://localhost:8080;  # 前端容器映射到宿主机8080端口
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           
+           # 处理Vue路由的history模式
+           try_files $uri $uri/ @rewrites;
+       }
+       
+       # 重写规则，处理Vue路由
+       location @rewrites {
+           rewrite ^(.+)$ /index.html break;
+           proxy_pass http://localhost:8080;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
        }
    }
    ```
 
-5. **启动Docker服务**
+2. **检查Nginx配置**
    ```bash
-   docker-compose up -d
+   nginx -t
    ```
+
+3. **重启Nginx服务**
+   ```bash
+   systemctl restart nginx
+   ```
+
+### 部署脚本说明
+
+一键部署脚本`deploy.sh`的主要功能：
+
+1. **依赖检查**：自动检查Docker和Docker Compose是否安装
+2. **环境配置**：自动创建和配置.env文件
+3. **简化配置**：生成简化的docker-compose-easy.yml文件
+4. **密钥目录**：自动创建后端密钥目录
+5. **构建启动**：自动构建和启动前后端服务
+6. **状态检查**：显示服务运行状态
+7. **配置建议**：输出宿主机Nginx配置建议
+8. **访问地址**：显示服务访问地址
+
+### Dockerfile示例
+
+#### 后端Dockerfile
+
+```dockerfile
+# backend/Dockerfile
+FROM python:3.12
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装依赖
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# 复制应用代码
+COPY . .
+
+# 创建密钥目录（如果需要的话）
+RUN mkdir -p /app/keys
+
+# 暴露端口
+EXPOSE 8000
+
+# 启动应用
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+#### 前端Dockerfile
+
+```dockerfile
+# frontend/Dockerfile
+FROM node:20 as build
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装依赖
+COPY package*.json ./
+RUN npm install
+
+# 复制应用代码
+COPY . .
+
+# 构建生产版本
+RUN npm run build
+
+# 使用Nginx作为前端服务器
+FROM nginx:alpine
+
+# 复制构建产物到Nginx静态目录
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# 复制Nginx配置文件
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# 暴露端口
+EXPOSE 80
+
+# 启动Nginx
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+#### 前端容器内部Nginx配置
+
+```nginx
+# frontend/nginx.conf
+server {
+    listen 80;
+    server_name localhost;
+    
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # 反向代理到后端API（容器内部通信）
+    location /api {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # 静态资源缓存配置
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        root /usr/share/nginx/html;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
 
 ## API文档
 
