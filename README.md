@@ -119,242 +119,203 @@ hex-auth/
 
 ## 部署
 
-### 部署选项
+hex-auth支持两种主要部署方式，根据您的环境和需求选择合适的方案：
 
-#### 选项1：一键部署（推荐）
+### 部署方式1：前后端Docker部署（连接已有的MySQL和Nginx）
 
-这是最简单的部署方式，适用于已安装MySQL和Nginx的服务器：
+如果您的服务器已经安装了MySQL和Nginx，可以使用此方案，只部署前后端服务。
 
-1. **给脚本添加执行权限**
-   ```bash
-   chmod +x deploy.sh
-   ```
+#### 1. 准备工作
+- 确保服务器已安装Docker和Docker Compose
+- 确保MySQL已创建数据库 `hex_auth`
+- 确保Nginx已配置好反向代理
 
-2. **执行一键部署脚本**
-   ```bash
-   ./deploy.sh
-   ```
+#### 2. 配置环境变量
 
-3. **按照脚本提示操作**
-   - 脚本会自动检查Docker和Docker Compose依赖
-   - 创建并配置.env文件
-   - 创建简化的docker-compose-easy.yml文件
-   - 构建并启动前后端服务
-   - 显示访问地址和Nginx配置建议
+在项目根目录创建 `.env` 文件：
 
-4. **配置宿主机Nginx**
-   - 脚本会输出Nginx配置建议
-   - 将配置添加到`/etc/nginx/conf.d/hex-auth.conf`
-   - 检查配置：`nginx -t`
-   - 重启Nginx：`systemctl restart nginx`
+```bash
+# 数据库连接配置（连接到已有的MySQL）
+DATABASE_URL="mysql+pymysql://root:password@localhost:3306/hex_auth"
 
-#### 选项2：完整Docker部署（包含MySQL）
+# JWT配置
+SECRET_KEY="your-secret-key"
+ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-如果您的服务器没有安装MySQL，可以使用完整的Docker部署方案，包含数据库服务：
+# RSA配置
+RSA_PRIVATE_KEY_PATH="./keys/private.pem"
+RSA_PUBLIC_KEY_PATH="./keys/public.pem"
+```
 
-1. **创建docker-compose.yml文件**
-   ```yaml
-   version: '3.8'
-   
-   services:
-     # 数据库服务
-     mysql:
-       image: mysql:8.0
-       container_name: hex-auth-mysql
-       restart: always
-       environment:
-         MYSQL_ROOT_PASSWORD: root
-         MYSQL_DATABASE: hex_auth
-       ports:
-         - "3306:3306"
-       volumes:
-         - mysql-data:/var/lib/mysql
-     
-     # 后端服务
-     backend:
-       build:
-         context: ./backend
-         dockerfile: Dockerfile
-       container_name: hex-auth-backend
-       restart: always
-       depends_on:
-         - mysql
-       environment:
-         DATABASE_URL: "mysql+pymysql://root:root@mysql:3306/hex_auth"
-         SECRET_KEY: "your-secret-key"
-       ports:
-         - "8000:8000"
-     
-     # 前端服务
-     frontend:
-       build:
-         context: ./frontend
-         dockerfile: Dockerfile
-       container_name: hex-auth-frontend
-       restart: always
-       depends_on:
-         - backend
-       ports:
-         - "80:80"
-   
-   volumes:
-     mysql-data:
-   ```
+#### 3. 构建并启动前后端容器
 
-2. **启动服务**
-   ```bash
-   docker-compose up -d
-   ```
+```bash
+# 构建后端容器
+docker build -t hex-auth-backend ./backend
 
-#### 选项3：前后端Docker部署（连接已有的MySQL）
+# 构建前端容器
+docker build -t hex-auth-frontend ./frontend
 
-如果您的服务器已经安装了MySQL，可以使用此方案，只部署前后端服务：
+# 运行后端容器
+docker run -d --name hex-auth-backend -p 8000:8000 --env-file ./.env hex-auth-backend
 
-1. **创建docker-compose-separate.yml文件**
-   ```yaml
-   version: '3.8'
-   
-   # 网络配置
-   networks:
-     hex-auth-network:
-       driver: bridge
-       ipam:
-         config:
-           - subnet: 172.20.0.0/16
-   
-   # 后端服务
-   services:
-     # 后端API服务
-     backend:
-       build:
-         context: ./backend
-         dockerfile: Dockerfile
-       container_name: hex-auth-backend
-       restart: always
-       networks:
-         - hex-auth-network
-       environment:
-         # 数据库连接配置（连接到宿主机已有的MySQL）
-         DATABASE_URL: "mysql+pymysql://root:password@host.docker.internal:3306/hex_auth"
-         # 或者使用宿主机IP地址
-         # DATABASE_URL: "mysql+pymysql://root:password@192.168.1.100:3306/hex_auth"
-         SECRET_KEY: "your-secret-key"
-         # JWT配置
-         ALGORITHM: "HS256"
-         ACCESS_TOKEN_EXPIRE_MINUTES: "30"
-         # RSA配置
-         RSA_PRIVATE_KEY_PATH: "./keys/private.pem"
-         RSA_PUBLIC_KEY_PATH: "./keys/public.pem"
-       ports:
-         - "8000:8000"
-       volumes:
-         # 挂载RSA密钥目录（如果需要的话）
-         - ./backend/keys:/app/keys:ro
-       extra_hosts:
-         - "host.docker.internal:host-gateway"  # 允许容器访问宿主机
-   
-     # 前端服务
-     frontend:
-       build:
-         context: ./frontend
-         dockerfile: Dockerfile
-       container_name: hex-auth-frontend
-       restart: always
-       networks:
-         - hex-auth-network
-       ports:
-         - "8080:80"  # 前端容器内部使用80端口，映射到宿主机8080端口
-       depends_on:
-         - backend
-     # 注意：由于宿主机已安装Nginx，这里的前端容器端口将由宿主机Nginx反向代理
-   ```
+# 运行前端容器
+docker run -d --name hex-auth-frontend -p 8080:80 hex-auth-frontend
+```
 
-2. **启动服务**
-   ```bash
-   docker-compose -f docker-compose-separate.yml up -d
-   ```
+#### 4. 配置服务器Nginx
 
-### 宿主机Nginx配置
+在 `/etc/nginx/conf.d/` 目录下创建 `hex-auth.conf` 文件：
 
-如果您的服务器已经安装了Nginx，可以添加以下配置来反向代理到Docker容器：
+```nginx
+server {
+    listen 80;
+    server_name www.shiliu.icu;  # 替换为您的域名
+    
+    # 前端代理
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # 后端API代理
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # 管理员API代理
+    location /admin {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+```
 
-1. **创建宿主机Nginx配置文件**
-   ```nginx
-   # 保存到：/etc/nginx/conf.d/hex-auth.conf
-   
-   # 后端API服务配置
-   server {
-       listen 80;
-       server_name api.example.com;  # 替换为你的API域名
-       
-       # 反向代理到后端Docker容器
-       location / {
-           proxy_pass http://localhost:8000;  # 后端容器映射到宿主机8000端口
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-   }
-   
-   # 前端服务配置
-   server {
-       listen 80;
-       server_name auth.example.com;  # 替换为你的前端域名
-       
-       # 反向代理到前端Docker容器
-       location / {
-           proxy_pass http://localhost:8080;  # 前端容器映射到宿主机8080端口
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-           
-           # 处理Vue路由的history模式
-           try_files $uri $uri/ @rewrites;
-       }
-       
-       # 重写规则，处理Vue路由
-       location @rewrites {
-           rewrite ^(.+)$ /index.html break;
-           proxy_pass http://localhost:8080;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-   }
-   ```
+#### 5. 重启Nginx服务
 
-2. **检查Nginx配置**
-   ```bash
-   nginx -t
-   ```
+```bash
+# 检查Nginx配置语法
+nginx -t
 
-3. **重启Nginx服务**
-   ```bash
-   systemctl restart nginx
-   ```
+# 重启Nginx服务
+systemctl restart nginx
+```
 
-### 部署脚本说明
+### 部署方式2：Docker Compose部署（含MySQL容器）
 
-一键部署脚本`deploy.sh`的主要功能：
+如果您的服务器没有安装MySQL，可以使用此方案，一键部署完整的服务栈，包括MySQL数据库。
 
-1. **依赖检查**：自动检查Docker和Docker Compose是否安装
-2. **环境配置**：自动创建和配置.env文件
-3. **简化配置**：生成简化的docker-compose-easy.yml文件
-4. **密钥目录**：自动创建后端密钥目录
-5. **构建启动**：自动构建和启动前后端服务
-6. **状态检查**：显示服务运行状态
-7. **配置建议**：输出宿主机Nginx配置建议
-8. **访问地址**：显示服务访问地址
+#### 1. 创建docker-compose.yml文件
 
-### Dockerfile示例
+在项目根目录创建 `docker-compose.yml` 文件：
 
-#### 后端Dockerfile
+```yaml
+version: '3.8'
+
+# 数据库服务
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: hex-auth-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hex_auth
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - hex-auth-network
+
+  # 后端API服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hex-auth-backend
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      # 数据库连接配置（连接到容器内的MySQL）
+      DATABASE_URL: "mysql+pymysql://root:root@mysql:3306/hex_auth"
+      SECRET_KEY: "your-secret-key"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+    ports:
+      - "8000:8000"
+    networks:
+      - hex-auth-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hex-auth-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - hex-auth-network
+
+# 网络配置
+networks:
+  hex-auth-network:
+    driver: bridge
+
+# 数据卷配置
+volumes:
+  mysql-data:
+```
+
+#### 2. 启动服务
+
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+```
+
+#### 3. 访问服务
+
+- 前端地址：`http://your-server-ip`
+- 后端API：`http://your-server-ip:8000`
+
+### Dockerfile说明
+
+#### 后端Dockerfile (backend/Dockerfile)
 
 ```dockerfile
-# backend/Dockerfile
 FROM python:3.12
 
 # 设置工作目录
@@ -367,7 +328,7 @@ RUN pip install -r requirements.txt
 # 复制应用代码
 COPY . .
 
-# 创建密钥目录（如果需要的话）
+# 创建密钥目录
 RUN mkdir -p /app/keys
 
 # 暴露端口
@@ -377,10 +338,9 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-#### 前端Dockerfile
+#### 前端Dockerfile (frontend/Dockerfile)
 
 ```dockerfile
-# frontend/Dockerfile
 FROM node:20 as build
 
 # 设置工作目录
@@ -412,10 +372,9 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
-#### 前端容器内部Nginx配置
+#### 前端Nginx配置 (frontend/nginx.conf)
 
 ```nginx
-# frontend/nginx.conf
 server {
     listen 80;
     server_name localhost;
@@ -424,15 +383,6 @@ server {
         root /usr/share/nginx/html;
         index index.html;
         try_files $uri $uri/ /index.html;
-    }
-    
-    # 反向代理到后端API（容器内部通信）
-    location /api {
-        proxy_pass http://backend:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
     
     # 静态资源缓存配置
