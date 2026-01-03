@@ -41,3 +41,16 @@ coverage/
 
 # hex-auth specific
 .trae/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.tox/
+.eggs/
+*.egg-info/
+
+# Local requirements file
+local-requirements.txt
