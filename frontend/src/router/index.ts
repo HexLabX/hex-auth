@@ -40,6 +40,12 @@ const router = createRouter({
           component: () => import('@/pages/AuditLogs.vue')
         }
       ]
+    },
+    // 404路由，处理所有未知路径
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      redirect: '/dashboard' // 未知路径重定向到仪表盘
     }
   ]
 })
