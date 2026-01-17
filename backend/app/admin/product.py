@@ -25,10 +25,10 @@ def create_product(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Product code already exists"
         )
-    
+
     # 生成RSA密钥对
     private_key, public_key = generate_rsa_key_pair()
-    
+
     # 创建产品
     db_product = Product(
         product_code=product.product_code,
@@ -38,21 +38,24 @@ def create_product(
         heartbeat_interval=product.heartbeat_interval,
         status=product.status
     )
-    
+
     db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
-    
-    # 记录审计日志
+
+    # 记录审计日志（不单独提交）
     create_audit_log(
         db=db,
         admin_username=current_admin.username,
         action="创建",
         target_type="产品",
         target_id=db_product.id,
-        target_instance=db_product
+        target_instance=db_product,
+        commit=False  # 不单独提交，等待外部统一提交
     )
-    
+
+    # 统一提交（产品和审计日志一次性提交）
+    db.commit()
+    db.refresh(db_product)
+
     return db_product
 
 # 查询产品列表
@@ -102,16 +105,13 @@ def update_product(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
         )
-    
+
     # 更新产品信息
     update_data = product_update.dict(exclude_unset=True)
     for key, value in update_data.items():
         setattr(product, key, value)
-    
-    db.commit()
-    db.refresh(product)
-    
-    # 记录审计日志
+
+    # 记录审计日志（不单独提交）
     create_audit_log(
         db=db,
         admin_username=current_admin.username,
@@ -119,9 +119,14 @@ def update_product(
         target_type="产品",
         target_id=product.id,
         target_instance=product,
-        detail={"updated_fields": list(update_data.keys())}
+        detail={"updated_fields": list(update_data.keys())},
+        commit=False
     )
-    
+
+    # 统一提交
+    db.commit()
+    db.refresh(product)
+
     return product
 
 # 删除产品
@@ -137,18 +142,19 @@ def delete_product(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
         )
-    
-    # 记录审计日志
+
+    # 记录审计日志（不单独提交）
     create_audit_log(
         db=db,
         admin_username=current_admin.username,
         action="删除",
         target_type="产品",
         target_id=product.id,
-        target_instance=product
+        target_instance=product,
+        commit=False
     )
-    
+
     db.delete(product)
     db.commit()
-    
+
     return None

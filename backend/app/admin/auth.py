@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -90,3 +90,41 @@ def get_me(current_admin: AdminUser = Depends(get_current_admin)):
         "last_login": current_admin.last_login,
         "created_at": current_admin.created_at
     }
+
+# 修改密码
+@router.post("/change-password")
+def change_password(
+    old_password: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    # 验证旧密码
+    if not verify_password(old_password, current_admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="旧密码错误"
+        )
+
+    # 检查新密码长度
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="新密码长度不能少于6位"
+        )
+
+    # 更新密码
+    current_admin.password_hash = get_password_hash(new_password)
+    db.commit()
+
+    # 记录审计日志
+    create_audit_log(
+        db=db,
+        admin_username=current_admin.username,
+        action="修改密码",
+        target_type="管理员",
+        target_id=current_admin.id,
+        target_instance=current_admin
+    )
+
+    return {"message": "密码修改成功"}

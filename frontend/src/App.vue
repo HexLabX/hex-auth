@@ -15,16 +15,18 @@
   box-sizing: border-box;
 }
 
+html,
 body {
+  width: 100%;
+  height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background-color: #f5f7fa;
   color: #1e293b;
-  min-height: 100vh;
 }
 
 #app {
-  min-height: 100vh;
   width: 100%;
+  height: 100%;
 }
 
 /* 滚动条样式 */

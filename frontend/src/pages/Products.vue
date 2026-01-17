@@ -2,11 +2,51 @@
   <div class="products-page">
     <div class="page-header">
       <h2>产品管理</h2>
-      <button class="add-btn" @click="showCreateModal = true">添加产品</button>
+      <button class="add-btn" @click="showCreateModal = true">
+        <Icon :icon="icons.add" />
+        添加产品
+      </button>
     </div>
-    
+
+    <!-- 搜索和筛选栏 -->
+    <div class="toolbar">
+      <div class="search-box">
+        <Icon :icon="icons.search" class="search-icon" />
+        <input
+          v-model="searchText"
+          type="text"
+          placeholder="搜索产品名称或代码"
+          @input="handleSearch"
+        />
+      </div>
+
+      <select v-model="statusFilter" class="filter-select" @change="handleFilter">
+        <option value="">全部状态</option>
+        <option value="enabled">启用</option>
+        <option value="disabled">禁用</option>
+      </select>
+
+      <button class="refresh-btn" @click="fetchProducts" :disabled="isLoading">
+        <Icon :icon="icons.refresh" />
+      </button>
+    </div>
+
+    <!-- 表格 -->
     <div class="products-table-wrapper">
-      <table class="products-table">
+      <!-- 骨架屏 -->
+      <TableSkeleton v-if="isLoading && products.length === 0" :columns="6" :rows="5" />
+
+      <!-- 空状态 -->
+      <div v-else-if="filteredProducts.length === 0" class="empty-state">
+        <Icon :icon="icons.info" class="empty-icon" />
+        <p>{{ searchText || statusFilter ? '未找到匹配的产品' : '暂无产品数据' }}</p>
+        <button v-if="!searchText && !statusFilter" class="empty-action" @click="showCreateModal = true">
+          创建第一个产品
+        </button>
+      </div>
+
+      <!-- 数据表格 -->
+      <table v-else class="products-table">
         <thead>
           <tr>
             <th>产品代码</th>
@@ -18,45 +58,67 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="product in products" :key="product.id">
-            <td>{{ product.product_code }}</td>
+          <tr v-for="product in paginatedProducts" :key="product.id">
+            <td><code>{{ product.product_code }}</code></td>
             <td>{{ product.name }}</td>
             <td>{{ product.heartbeat_interval }}秒</td>
             <td>
               <span class="status-badge" :class="product.status">
-                {{ product.status }}
+                <Icon :icon="product.status === 'enabled' ? icons.check : icons.stop" />
+                {{ product.status === 'enabled' ? '启用' : '禁用' }}
               </span>
             </td>
             <td>{{ formatDate(product.created_at) }}</td>
             <td class="action-buttons">
-              <button class="edit-btn" @click="openEditModal(product)">编辑</button>
-              <n-popconfirm 
-                placement="top"
-                positive-text="确定"
-                negative-text="取消"
-                @positive-click="deleteProduct(product.id)"
-              >
-                <template #trigger>
-                  <button 
-                    class="delete-btn" 
-                    :disabled="isLoading"
-                  >
-                    删除
-                  </button>
-                </template>
-                <template #default>
-                  <div>确定要删除该产品吗？</div>
-                </template>
-              </n-popconfirm>
+              <button class="edit-btn" @click="openEditModal(product)">
+                <Icon :icon="icons.edit" />
+                编辑
+              </button>
+              <button class="delete-btn" @click="confirmDelete(product)" :disabled="isLoading">
+                <Icon :icon="icons.delete" />
+                删除
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
-      <div v-if="products.length === 0" class="empty-state">
-        暂无产品数据
+
+      <!-- 分页 -->
+      <div v-if="filteredProducts.length > pageSize" class="pagination">
+        <div class="pagination-info">
+          显示 {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filteredProducts.length) }}
+          / 共 {{ filteredProducts.length }} 条
+        </div>
+        <div class="pagination-controls">
+          <button
+            class="page-btn"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+          >
+            上一页
+          </button>
+          <span class="page-numbers">
+            <button
+              v-for="page in visiblePages"
+              :key="page"
+              class="page-number"
+              :class="{ active: page === currentPage }"
+              @click="currentPage = page"
+            >
+              {{ page }}
+            </button>
+          </span>
+          <button
+            class="page-btn"
+            :disabled="currentPage === totalPages"
+            @click="currentPage++"
+          >
+            下一页
+          </button>
+        </div>
       </div>
     </div>
-    
+
     <!-- 创建产品模态框 -->
     <div v-if="showCreateModal" class="modal-overlay" @click="showCreateModal = false">
       <div class="modal" @click.stop>
@@ -67,8 +129,8 @@
         <form class="modal-form" @submit.prevent="createProduct">
           <div class="form-group">
             <label for="create-product-code">产品代码</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               id="create-product-code"
               v-model="createForm.product_code"
               placeholder="请输入产品代码"
@@ -77,8 +139,8 @@
           </div>
           <div class="form-group">
             <label for="create-name">产品名称</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               id="create-name"
               v-model="createForm.name"
               placeholder="请输入产品名称"
@@ -87,8 +149,8 @@
           </div>
           <div class="form-group">
             <label for="create-heartbeat-interval">心跳间隔（秒）</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               id="create-heartbeat-interval"
               v-model="createForm.heartbeat_interval"
               placeholder="请输入心跳间隔"
@@ -106,7 +168,7 @@
         </form>
       </div>
     </div>
-    
+
     <!-- 编辑产品模态框 -->
     <div v-if="showEditModal" class="modal-overlay" @click="showEditModal = false">
       <div class="modal" @click.stop>
@@ -117,8 +179,8 @@
         <form class="modal-form" @submit.prevent="updateProduct">
           <div class="form-group">
             <label for="edit-name">产品名称</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               id="edit-name"
               v-model="editForm.name"
               placeholder="请输入产品名称"
@@ -127,8 +189,8 @@
           </div>
           <div class="form-group">
             <label for="edit-heartbeat-interval">心跳间隔（秒）</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               id="edit-heartbeat-interval"
               v-model="editForm.heartbeat_interval"
               placeholder="请输入心跳间隔"
@@ -157,18 +219,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { NPopconfirm } from 'naive-ui'
+import { ref, computed, onMounted } from 'vue'
+import { Icon } from '@iconify/vue'
+import icons from '@/icons'
+import { Message, Dialog } from '@/utils/message'
 import api from '@/api'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
 // 产品列表
-const products = ref([])
+const products = ref<any[]>([])
+
 // 加载状态
 const isLoading = ref(false)
+
 // 创建模态框状态
 const showCreateModal = ref(false)
+
 // 编辑模态框状态
 const showEditModal = ref(false)
+
+// 搜索和筛选
+const searchText = ref('')
+const statusFilter = ref('')
+
+// 分页
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 // 创建表单数据
 const createForm = ref({
@@ -191,15 +267,73 @@ const formatDate = (dateString: string) => {
   return date.toLocaleString()
 }
 
+// 过滤后的产品
+const filteredProducts = computed(() => {
+  let result = products.value
+
+  // 搜索过滤
+  if (searchText.value) {
+    const search = searchText.value.toLowerCase()
+    result = result.filter(p =>
+      p.name.toLowerCase().includes(search) ||
+      p.product_code.toLowerCase().includes(search)
+    )
+  }
+
+  // 状态过滤
+  if (statusFilter.value) {
+    result = result.filter(p => p.status === statusFilter.value)
+  }
+
+  return result
+})
+
+// 总页数
+const totalPages = computed(() => Math.ceil(filteredProducts.value.length / pageSize.value))
+
+// 可见页码
+const visiblePages = computed(() => {
+  const pages: number[] = []
+  const maxVisible = 5
+  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+  let end = Math.min(totalPages.value, start + maxVisible - 1)
+
+  if (end - start < maxVisible - 1) {
+    start = Math.max(1, end - maxVisible + 1)
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+
+  return pages
+})
+
+// 当前页的产品
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredProducts.value.slice(start, end)
+})
+
+// 搜索处理
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+// 筛选处理
+const handleFilter = () => {
+  currentPage.value = 1
+}
+
 // 获取产品列表
 const fetchProducts = async () => {
   isLoading.value = true
   try {
-    // 调用API获取产品列表
-    const response = await api.get('/admin/product')
+    const response = await api.get('/admin/product/')
     products.value = response
   } catch (error) {
-    console.error('Failed to fetch products:', error)
+    Message.error('获取产品列表失败')
   } finally {
     isLoading.value = false
   }
@@ -209,19 +343,33 @@ const fetchProducts = async () => {
 const createProduct = async () => {
   isLoading.value = true
   try {
-    await api.post('/admin/product', createForm.value)
+    // 确保数据类型正确
+    const payload = {
+      product_code: createForm.value.product_code.trim(),
+      name: createForm.value.name.trim(),
+      heartbeat_interval: Number(createForm.value.heartbeat_interval)
+    }
+
+    await api.post('/admin/product/', payload)
+
+    // 立即关闭模态框和显示成功消息
     showCreateModal.value = false
+    Message.success('产品创建成功')
+
     // 重置表单
     createForm.value = {
       product_code: '',
       name: '',
       heartbeat_interval: 3600
     }
-    // 重新获取产品列表
+
+    // 立即关闭加载状态，用户可以继续操作
+    isLoading.value = false
+
+    // 在后台异步刷新列表（不使用await，不阻塞）
     fetchProducts()
-  } catch (error) {
-    console.error('Failed to create product:', error)
-  } finally {
+  } catch (error: any) {
+    Message.error(error.response?.data?.detail || '产品创建失败')
     isLoading.value = false
   }
 }
@@ -243,12 +391,24 @@ const updateProduct = async () => {
   try {
     await api.put(`/admin/product/${editForm.value.id}`, editForm.value)
     showEditModal.value = false
-    // 重新获取产品列表
+    Message.success('产品更新成功')
     fetchProducts()
   } catch (error) {
-    console.error('Failed to update product:', error)
+    Message.error('产品更新失败')
   } finally {
     isLoading.value = false
+  }
+}
+
+// 确认删除
+const confirmDelete = async (product: any) => {
+  const confirmed = await Dialog.confirm({
+    title: '确认删除',
+    content: `确定要删除产品 "${product.name}" 吗？此操作不可恢复。`
+  })
+
+  if (confirmed) {
+    await deleteProduct(product.id)
   }
 }
 
@@ -257,10 +417,10 @@ const deleteProduct = async (id: number) => {
   isLoading.value = true
   try {
     await api.delete(`/admin/product/${id}`)
-    // 重新获取产品列表
+    Message.success('产品删除成功')
     fetchProducts()
   } catch (error) {
-    console.error('Failed to delete product:', error)
+    Message.error('产品删除失败')
   } finally {
     isLoading.value = false
   }
@@ -275,21 +435,33 @@ onMounted(() => {
 <style scoped>
 .products-page {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .add-btn {
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
   background-color: #3b82f6;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -300,12 +472,99 @@ onMounted(() => {
   background-color: #2563eb;
 }
 
+.add-btn :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 300px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.search-icon :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.refresh-btn {
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  border-color: #3b82f6;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refresh-btn :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+/* 表格容器 */
 .products-table-wrapper {
   background-color: #fff;
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .products-table {
@@ -326,12 +585,27 @@ onMounted(() => {
   background-color: #f8fafc;
 }
 
+.products-table td code {
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #334155;
+}
+
 .status-badge {
-  display: inline-block;
-  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+}
+
+.status-badge :deep(svg) {
+  width: 14px;
+  height: 14px;
 }
 
 .status-badge.enabled {
@@ -351,6 +625,9 @@ onMounted(() => {
 
 .edit-btn,
 .delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
@@ -358,6 +635,12 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   transition: background-color 0.2s ease;
+}
+
+.edit-btn :deep(svg),
+.delete-btn :deep(svg) {
+  width: 14px;
+  height: 14px;
 }
 
 .edit-btn {
@@ -383,11 +666,112 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
+/* 空状态 */
 .empty-state {
   text-align: center;
-  padding: 40px;
+  padding: 60px 20px;
   color: #64748b;
+}
+
+.empty-icon {
+  font-size: 64px;
+  color: #cbd5e1;
+  margin-bottom: 16px;
+}
+
+.empty-icon :deep(svg) {
+  width: 64px;
+  height: 64px;
+}
+
+.empty-state p {
   font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.empty-action {
+  padding: 10px 20px;
+  background-color: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.empty-action:hover {
+  background-color: #2563eb;
+}
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-btn {
+  padding: 6px 12px;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  border-color: #3b82f6;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.page-number {
+  min-width: 32px;
+  height: 32px;
+  padding: 6px;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.page-number:hover {
+  background-color: #f8fafc;
+  border-color: #3b82f6;
+}
+
+.page-number.active {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
 }
 
 /* 模态框样式 */
@@ -402,6 +786,16 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal {
@@ -410,6 +804,18 @@ onMounted(() => {
   width: 100%;
   max-width: 500px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -468,7 +874,7 @@ onMounted(() => {
   width: 100%;
   padding: 12px;
   border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.2s ease;
 }
@@ -491,7 +897,7 @@ onMounted(() => {
 .confirm-btn {
   padding: 10px 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;

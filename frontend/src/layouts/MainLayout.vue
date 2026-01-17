@@ -5,14 +5,14 @@
         <h1>hex-auth</h1>
       </div>
       <nav class="sidebar-nav">
-        <router-link 
-          v-for="item in menuItems" 
+        <router-link
+          v-for="item in menuItems"
           :key="item.path"
           :to="item.path"
           class="nav-item"
           :class="{ active: route.path === item.path }"
         >
-          <span class="nav-icon">{{ item.icon }}</span>
+          <span class="nav-icon"><Icon :icon="item.icon" /></span>
           <span class="nav-text">{{ item.label }}</span>
         </router-link>
       </nav>
@@ -23,7 +23,14 @@
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="nav-right">
-          <button class="logout-btn" @click="logout">退出登录</button>
+          <button class="profile-btn" @click="goToProfile" title="个人中心">
+            <Icon :icon="icons.user" />
+            <span class="profile-text">个人中心</span>
+          </button>
+          <button class="logout-btn" @click="logout" title="退出登录">
+            <Icon :icon="icons.logout" />
+            <span class="logout-text">退出</span>
+          </button>
         </div>
       </header>
       <div class="content">
@@ -36,24 +43,32 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Icon } from '@iconify/vue'
+import icons from '@/icons'
 
 const router = useRouter()
 const route = useRoute()
 
 // 菜单配置
 const menuItems = [
-  { path: '/dashboard', label: '仪表盘', icon: '📊' },
-  { path: '/products', label: '产品管理', icon: '📦' },
-  { path: '/licenses', label: '授权管理', icon: '🔑' },
-  { path: '/clients', label: '客户端管理', icon: '💻' },
-  { path: '/audit-logs', label: '审计日志', icon: '📋' }
+  { path: '/dashboard', label: '仪表盘', icon: icons.dashboard },
+  { path: '/products', label: '产品管理', icon: icons.products },
+  { path: '/licenses', label: '授权管理', icon: icons.licenses },
+  { path: '/clients', label: '客户端管理', icon: icons.clients },
+  { path: '/audit-logs', label: '审计日志', icon: icons.auditLogs }
 ]
 
 // 当前页面标题
 const currentPageTitle = computed(() => {
   const currentRoute = menuItems.find(item => item.path === route.path)
+  if (route.path === '/profile') return '个人中心'
   return currentRoute?.label || 'hex-auth'
 })
+
+// 跳转到个人中心
+const goToProfile = () => {
+  router.push('/profile')
+}
 
 // 退出登录
 const logout = () => {
@@ -116,7 +131,13 @@ const logout = () => {
 
 .nav-icon {
   margin-right: 12px;
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-icon :deep(svg) {
+  width: 18px;
+  height: 18px;
 }
 
 .nav-text {
@@ -149,20 +170,58 @@ const logout = () => {
   color: #1e293b;
 }
 
+.nav-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.profile-btn,
 .logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 16px;
-  background-color: #ef4444;
-  color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.profile-btn :deep(svg),
+.logout-btn :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+.profile-btn {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.profile-btn:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.profile-text {
+  display: inline-block;
+}
+
+.logout-btn {
+  background-color: #ef4444;
+  color: #fff;
 }
 
 .logout-btn:hover {
   background-color: #dc2626;
+}
+
+.logout-text {
+  display: inline-block;
 }
 
 .content {

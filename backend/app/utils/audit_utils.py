@@ -15,11 +15,13 @@ def create_audit_log(
     target_id: Any,
     detail: Optional[dict] = None,
     # 可选的对象实例，用于自动收集详情
-    target_instance: Optional[Any] = None
+    target_instance: Optional[Any] = None,
+    # 是否立即提交，默认True（保持向后兼容）
+    commit: bool = True
 ):
     """
     记录审计日志
-    
+
     Args:
         db: 数据库会话
         admin_username: 操作用户名
@@ -28,10 +30,11 @@ def create_audit_log(
         target_id: 操作对象ID
         detail: 操作详情（可选）
         target_instance: 操作对象实例（可选），用于自动收集详情
+        commit: 是否立即提交，默认True
     """
     # 确保target_id是字符串类型
     target_id_str = str(target_id)
-    
+
     # 自动收集对象详情
     auto_detail = {}
     if target_instance:
@@ -65,12 +68,12 @@ def create_audit_log(
                 "username": target_instance.username,
                 "status": target_instance.status
             }
-    
+
     # 合并自动详情和手动详情
     final_detail = {**auto_detail}
     if detail:
         final_detail.update(detail)
-    
+
     audit_log = AuditLog(
         admin_username=admin_username,
         action=action,
@@ -78,9 +81,10 @@ def create_audit_log(
         target_id=target_id_str,
         detail=final_detail
     )
-    
+
     db.add(audit_log)
-    db.commit()
-    db.refresh(audit_log)
-    
+
+    if commit:
+        db.commit()
+
     return audit_log

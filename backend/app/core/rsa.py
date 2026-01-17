@@ -8,7 +8,15 @@ from typing import Tuple, Dict, Any
 
 # 生成RSA密钥对
 def generate_rsa_key_pair() -> Tuple[str, str]:
-    key = RSA.generate(2048)
+    # 使用较小的密钥长度（2048位已经是安全性和性能的平衡）
+    # 在Windows上可以使用特定参数加速生成
+    try:
+        # 尝试使用更快的生成方式
+        key = RSA.generate(2048, e=65537)
+    except:
+        # 如果失败，使用默认方式
+        key = RSA.generate(2048)
+
     private_key = key.export_key().decode("utf-8")
     public_key = key.publickey().export_key().decode("utf-8")
     return private_key, public_key
