@@ -158,7 +158,7 @@ docker build -t hex-auth-backend ./backend
 docker build -t hex-auth-frontend ./frontend
 
 # 运行后端容器
-docker run -d --name hex-auth-backend -p 8000:8000 --env-file ./.env hex-auth-backend
+docker run -d --name hex-auth-backend -p 8000:8000 --env-file ./backend/.env hex-auth-backend
 
 # 运行前端容器
 docker run -d --name hex-auth-frontend -p 8080:80 hex-auth-frontend
