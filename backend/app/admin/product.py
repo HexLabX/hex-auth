@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
+from app.core.crypto import encrypt_private_key
 from app.core.rsa import generate_rsa_key_pair
 from app.models.admin_user import AdminUser
 from app.models.product import Product, ProductStatus
@@ -27,7 +28,7 @@ def create_product(
             detail="Product code already exists"
         )
 
-    # 生成RSA密钥对
+    # 生成RSA密钥对（私钥加密入库）
     private_key, public_key = generate_rsa_key_pair()
 
     # 创建产品
@@ -35,7 +36,7 @@ def create_product(
         product_code=product.product_code,
         name=product.name,
         public_key=public_key,
-        private_key=private_key,
+        private_key=encrypt_private_key(private_key),
         heartbeat_interval=product.heartbeat_interval,
         status=product.status
     )
