@@ -92,11 +92,16 @@ hex-auth/
    JWT_ALGORITHM="HS256"
    JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
    
+   # RSA私钥主密钥（用于加密存储各产品的RSA私钥）
+   # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   RSA_MASTER_KEY="your-fernet-key"
+   
    # CORS白名单（逗号分隔）
    CORS_ALLOW_ORIGINS="http://localhost:3000"
    ```
 
-   > 说明：每个产品创建时会自动生成独立的 RSA 密钥对并保存在数据库中，无需手动配置密钥文件。
+   > 说明：每个产品创建时会自动生成独立的 RSA 密钥对，私钥以 `RSA_MASTER_KEY` 加密后存库，公钥明文存库，无需手动配置密钥文件。
+   > ⚠️ `RSA_MASTER_KEY` 一旦设定请妥善保存：丢失后数据库中已加密的产品私钥将无法恢复。历史明文私钥无需处理，会在下次激活时自动升级为加密存储。
 
 3. **初始化数据库并创建初始管理员**
    ```bash
@@ -165,6 +170,9 @@ DATABASE_URL="mysql+pymysql://root:password@localhost:3306/hex_auth"
 JWT_SECRET_KEY="your-random-secret"
 JWT_ALGORITHM="HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# RSA私钥主密钥（一旦设定请妥善保存，丢失后已加密私钥无法恢复）
+RSA_MASTER_KEY="your-fernet-key"
 
 # CORS白名单（前后端通过Nginx同源代理时无需额外配置）
 CORS_ALLOW_ORIGINS="https://your-domain.com"
@@ -286,6 +294,7 @@ services:
       JWT_SECRET_KEY: "your-random-secret"
       JWT_ALGORITHM: "HS256"
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      RSA_MASTER_KEY: "your-fernet-key"
     ports:
       - "8000:8000"
     networks:
