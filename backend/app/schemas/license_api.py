@@ -16,6 +16,7 @@ try:
         success: bool
         message: str
         token: Optional[Dict[str, Any]] = None
+        heartbeat_interval: Optional[int] = None
     
     # 心跳请求
     class HeartbeatRequest(BaseModel):
@@ -58,6 +59,7 @@ except ImportError:
         success: bool
         message: str
         token: Optional[Dict[str, Any]] = None
+        heartbeat_interval: Optional[int] = None
         
         class Config:
             schema_extra = {
