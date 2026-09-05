@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -14,16 +14,11 @@ router = APIRouter()
 class ClearAuditLogsRequest(BaseModel):
     log_ids: Optional[List[int]] = None
 
-# 测试路由
-@router.post("/test")
-def test_endpoint():
-    return {"message": "Test works", "method": "POST"}
-
 # 查询审计日志
 @router.get("/", response_model=List[AuditLogResponse])
 def get_audit_logs(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     admin_username: str = None,
     action: str = None,
     target_type: str = None,

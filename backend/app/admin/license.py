@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
@@ -63,8 +63,8 @@ def create_license(
 # 查询授权列表
 @router.get("/", response_model=List[LicenseResponse])
 def get_licenses(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     status: LicenseStatus = None,
     product_code: str = None,
     db: Session = Depends(get_db),
