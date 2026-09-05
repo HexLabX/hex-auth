@@ -210,13 +210,13 @@ docker run -d --name hex-auth-frontend -p 8080:80 hex-auth-frontend
 # HTTP 跳转 HTTPS
 server {
     listen 80;
-    server_name www.shiliu.icu;  # 替换为您的域名
+    server_name your-domain.com;  # 替换为您的域名
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name www.shiliu.icu;  # 替换为您的域名
+    server_name your-domain.com;  # 替换为您的域名
 
     ssl_certificate     /etc/nginx/ssl/fullchain.pem;   # 替换为证书路径
     ssl_certificate_key /etc/nginx/ssl/privkey.pem;
@@ -264,8 +264,8 @@ server {
 
 ```bash
 # 安装 certbot 后签发证书（以Ubuntu为例）
-certbot certonly --nginx -d www.shiliu.icu
-# 证书位于 /etc/letsencrypt/live/www.shiliu.icu/，
+certbot certonly --nginx -d your-domain.com
+# 证书位于 /etc/letsencrypt/live/your-domain.com/，
 # 将上面 nginx 配置中的 ssl_certificate 路径指向它，certbot 会自动续期
 ```
 
