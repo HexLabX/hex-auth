@@ -349,12 +349,14 @@ const getStatusIcon = (status: string) => {
   return iconMap[status] || icons.info
 }
 
-// 生成授权码
+// 生成授权码（使用加密安全随机数）
 const generateLicenseKey = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
   let licenseKey = ''
   for (let i = 0; i < 16; i++) {
-    licenseKey += chars.charAt(Math.floor(Math.random() * chars.length))
+    licenseKey += chars.charAt(bytes[i] % chars.length)
   }
   return licenseKey.replace(/(.{4})/g, '$1-').slice(0, -1)
 }

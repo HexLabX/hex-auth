@@ -65,50 +65,26 @@ const handleLogin = async () => {
       password: loginForm.value.password
     }))
 
-    console.log('=== 登录调试信息 ===')
-    console.log('原始响应:', response)
-
     // 如果响应是字符串，尝试解析
     let data = response
     if (typeof response === 'string') {
-      console.log('响应是字符串，尝试解析')
       try {
         data = JSON.parse(response)
-      } catch (e) {
-        console.error('JSON解析失败:', e)
+      } catch {
+        // 保持data为原始response，由下方判断处理
       }
     }
 
     // 保存token
     if (data && data.access_token) {
-      // 保存 token 到 localStorage
       localStorage.setItem('token', data.access_token)
-      console.log('✓ Token已保存')
-
-      // 验证 token 已保存
-      const token = localStorage.getItem('token')
-      console.log('✓ Token验证:', token ? '成功' : '失败')
-
-      // 先设置 isLoading 为 false
       isLoading.value = false
-
-      // 等待确保所有操作完成
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // 使用 Vue Router 导航，不刷新页面
-      console.log('→ 准备跳转到 /dashboard')
       await router.push('/dashboard')
-      console.log('✓ 跳转完成')
     } else {
-      console.error('✗ 响应中没有 access_token')
       error.value = '登录失败：无效的响应'
       isLoading.value = false
     }
   } catch (err: any) {
-    console.error('=== 登录错误 ===')
-    console.error('错误对象:', err)
-    console.error('错误消息:', err.message)
-
     error.value = err.response?.data?.detail || err.message || '登录失败，请检查用户名和密码'
     isLoading.value = false
   }
