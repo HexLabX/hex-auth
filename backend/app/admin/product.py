@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
 from app.core.rsa import generate_rsa_key_pair
 from app.models.admin_user import AdminUser
 from app.models.product import Product, ProductStatus
+from app.models.license import License
 from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
 from app.admin.auth import get_current_admin
 from app.utils.audit_utils import create_audit_log
@@ -61,8 +62,8 @@ def create_product(
 # 查询产品列表
 @router.get("/", response_model=List[ProductResponse])
 def get_products(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     status: ProductStatus = None,
     db: Session = Depends(get_db),
     current_admin: AdminUser = Depends(get_current_admin)
@@ -141,6 +142,14 @@ def delete_product(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
+        )
+
+    # 产品下仍有授权时不允许删除，避免留下无法验签的孤儿授权
+    license_count = db.query(License).filter(License.product_code == product.product_code).count()
+    if license_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Product still has {license_count} license(s), revoke and delete them first"
         )
 
     # 记录审计日志（不单独提交）

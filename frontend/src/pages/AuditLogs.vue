@@ -374,16 +374,12 @@ const confirmClearSelected = async () => {
 const clearSelectedLogs = async () => {
   isLoading.value = true
   try {
-    console.log('清空选中的日志:', selectedLogs.value)
     const response = await api.post('/admin/audit/clear', { log_ids: selectedLogs.value })
-    console.log('清空选中响应:', response)
     Message.success('清空成功')
     selectedLogs.value = []
     selectAll.value = false
     fetchAuditLogs()
   } catch (error: any) {
-    console.error('清空选中失败:', error)
-    console.error('错误详情:', error.response?.data)
     Message.error(error.response?.data?.detail || '清空失败')
   } finally {
     isLoading.value = false
@@ -406,14 +402,10 @@ const confirmClearAll = async () => {
 const clearAllLogs = async () => {
   isLoading.value = true
   try {
-    console.log('清空所有日志')
     const response = await api.post('/admin/audit/clear-all')
-    console.log('清空所有响应:', response)
     Message.success('清空成功')
     fetchAuditLogs()
   } catch (error: any) {
-    console.error('清空所有失败:', error)
-    console.error('错误详情:', error.response?.data)
     Message.error(error.response?.data?.detail || '清空失败')
   } finally {
     isLoading.value = false

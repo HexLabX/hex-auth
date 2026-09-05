@@ -32,11 +32,13 @@ hex-auth/
 │   │   ├── models/           # 数据模型
 │   │   ├── schemas/          # 数据验证
 │   │   └── main.py           # 应用入口
-│   ├── .env                  # 环境变量配置
+│   ├── .env                  # 环境变量配置（不入库，参考 .env.example）
+│   ├── .env.example          # 环境变量模板
+│   ├── create_admin.py       # 初始管理员创建脚本
 │   ├── create_db.py          # 数据库初始化脚本
+│   ├── Dockerfile            # 后端Docker构建文件
 │   └── requirements.txt      # 依赖列表
 ├── frontend/                 # 前端代码
-│   ├── dist/                 # 构建输出
 │   ├── public/               # 静态资源
 │   ├── src/                  # 源代码
 │   │   ├── api/              # API请求
@@ -45,8 +47,9 @@ hex-auth/
 │   │   ├── pages/            # 页面组件
 │   │   ├── router/           # 路由配置
 │   │   └── stores/           # 状态管理
+│   ├── Dockerfile            # 前端Docker构建文件
 │   └── package.json          # 依赖配置
-└── docker-compose.yml        # Docker部署配置
+└── README.md
 ```
 
 ## 功能特性
@@ -74,25 +77,34 @@ hex-auth/
    ```
 
 2. **配置环境变量**
-   创建 `.env` 文件，添加以下内容：
+
+   复制模板创建 `.env` 文件（`.env` 不会提交到仓库）：
+   ```bash
+   cp .env.example .env
+   ```
+   按需修改以下内容：
    ```
    # 数据库配置
    DATABASE_URL="mysql+pymysql://root:password@localhost:3306/hex_auth"
    
-   # JWT配置
-   SECRET_KEY="your-secret-key"
-   ALGORITHM="HS256"
-   ACCESS_TOKEN_EXPIRE_MINUTES=30
+   # JWT配置（生产环境务必替换为随机密钥：
+   # python -c "import secrets; print(secrets.token_hex(32))"）
+   JWT_SECRET_KEY="your-random-secret"
+   JWT_ALGORITHM="HS256"
+   JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
    
-   # RSA配置
-   RSA_PRIVATE_KEY_PATH="./keys/private.pem"
-   RSA_PUBLIC_KEY_PATH="./keys/public.pem"
+   # CORS白名单（逗号分隔）
+   CORS_ALLOW_ORIGINS="http://localhost:3000"
    ```
 
-3. **初始化数据库**
+   > 说明：每个产品创建时会自动生成独立的 RSA 密钥对并保存在数据库中，无需手动配置密钥文件。
+
+3. **初始化数据库并创建初始管理员**
    ```bash
    python create_db.py
+   python create_admin.py
    ```
+   初始管理员为 `admin / admin123`，登录后请立即在「个人中心」修改密码。
 
 4. **启动开发服务器**
    ```bash
@@ -132,20 +144,19 @@ hex-auth支持两种主要部署方式，根据您的环境和需求选择合适
 
 #### 2. 配置环境变量
 
-在项目根目录创建 `.env` 文件：
+使用 `backend/.env.example` 作为模板（`docker run --env-file` 指向 `backend/.env`）：
 
 ```bash
 # 数据库连接配置（连接到已有的MySQL）
 DATABASE_URL="mysql+pymysql://root:password@localhost:3306/hex_auth"
 
-# JWT配置
-SECRET_KEY="your-secret-key"
-ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+# JWT配置（生产环境务必替换为随机密钥）
+JWT_SECRET_KEY="your-random-secret"
+JWT_ALGORITHM="HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# RSA配置
-RSA_PRIVATE_KEY_PATH="./keys/private.pem"
-RSA_PUBLIC_KEY_PATH="./keys/public.pem"
+# CORS白名单（前后端通过Nginx同源代理时无需额外配置）
+CORS_ALLOW_ORIGINS="https://your-domain.com"
 ```
 
 #### 3. 构建并启动前后端容器
@@ -261,9 +272,9 @@ services:
     environment:
       # 数据库连接配置（连接到容器内的MySQL）
       DATABASE_URL: "mysql+pymysql://root:root@mysql:3306/hex_auth"
-      SECRET_KEY: "your-secret-key"
-      ALGORITHM: "HS256"
-      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      JWT_SECRET_KEY: "your-random-secret"
+      JWT_ALGORITHM: "HS256"
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
     ports:
       - "8000:8000"
     networks:

@@ -20,21 +20,23 @@ def activate(
     request: ActivateRequest,
     db: Session = Depends(get_db)
 ):
-    # 1. 查找License
-    license = db.query(License).filter(License.license_key == request.license_key).first()
+    # 1. 查找License（加行锁，防止并发激活时设备数超卖）
+    license = db.query(License).filter(
+        License.license_key == request.license_key
+    ).with_for_update().first()
     if not license:
         return ActivateResponse(
             success=False,
             message="Invalid license key"
         )
-    
+
     # 2. 检查License状态
     if license.status == LicenseStatus.REVOKED:
         return ActivateResponse(
             success=False,
             message="License has been revoked"
         )
-    
+
     if license.expire_at < date.today():
         license.status = LicenseStatus.EXPIRED
         db.commit()
@@ -42,7 +44,7 @@ def activate(
             success=False,
             message="License has expired"
         )
-    
+
     # 3. 查找产品
     product = db.query(Product).filter(Product.product_code == license.product_code).first()
     if not product:
@@ -50,54 +52,72 @@ def activate(
             success=False,
             message="Product not found"
         )
-    
+
     if product.status == ProductStatus.DISABLED:
         return ActivateResponse(
             success=False,
             message="Product has been disabled"
         )
-    
-    # 4. 检查已激活设备数量
-    active_clients = db.query(Client).filter(
-        Client.license_id == license.id,
-        Client.status == ClientStatus.NORMAL
-    ).count()
-    
-    if active_clients >= license.max_devices:
+
+    # 4. 校验客户端类型（非法值直接拒绝，而不是抛500）
+    try:
+        client_type = ClientType(request.client_type.lower())
+    except ValueError:
         return ActivateResponse(
             success=False,
-            message="Maximum number of devices reached"
+            message="Invalid client type"
         )
-    
+
     # 5. 检查客户端指纹是否已绑定
     existing_client = db.query(Client).filter(
         Client.license_id == license.id,
         Client.client_fp == request.client_fp
     ).first()
-    
+
+    # 管理员禁用的客户端不允许通过重新激活自我解禁
+    if existing_client and existing_client.status == ClientStatus.DISABLED:
+        return ActivateResponse(
+            success=False,
+            message="Client has been disabled"
+        )
+
+    # 6. 检查已激活设备数量（排除自身占用的席位，已激活设备重装后可正常重新激活）
+    seat_query = db.query(Client).filter(
+        Client.license_id == license.id,
+        Client.status == ClientStatus.NORMAL
+    )
     if existing_client:
-        # 如果客户端已存在，更新状态为正常
+        seat_query = seat_query.filter(Client.id != existing_client.id)
+    active_clients = seat_query.count()
+
+    if active_clients >= license.max_devices:
+        return ActivateResponse(
+            success=False,
+            message="Maximum number of devices reached"
+        )
+
+    if existing_client:
+        # 异常状态的客户端恢复为正常
         existing_client.status = ClientStatus.NORMAL
         existing_client.last_heartbeat = datetime.utcnow()
-        db.commit()
     else:
-        # 6. 创建新客户端
+        # 7. 创建新客户端
         client = Client(
             license_id=license.id,
             product_code=license.product_code,
             client_fp=request.client_fp,
-            client_type=ClientType(request.client_type.lower()),
+            client_type=client_type,
             status=ClientStatus.NORMAL
         )
         db.add(client)
-        
-    # 7. 更新License状态为已激活
+
+    # 8. 更新License状态为已激活
     if license.status == LicenseStatus.UNACTIVATED:
         license.status = LicenseStatus.ACTIVATED
-    
+
     db.commit()
-    
-    # 8. 生成License Token
+
+    # 9. 生成License Token
     # 将date对象转换为datetime对象，然后获取timestamp
     expire_datetime = datetime.combine(license.expire_at, datetime.min.time())
     expire_at = int(expire_datetime.timestamp())
@@ -108,7 +128,7 @@ def activate(
         expire_at=expire_at,
         private_key=product.private_key
     )
-    
+
     return ActivateResponse(
         success=True,
         message="Activation successful",
@@ -149,11 +169,19 @@ def heartbeat(
                 message="License not found"
             )
         
-        # 5. 检查License状态
+        # 5. 检查License状态与有效期
         if license.status in [LicenseStatus.REVOKED, LicenseStatus.EXPIRED]:
             return HeartbeatResponse(
                 success=False,
                 message="License is invalid"
+            )
+
+        if license.expire_at < date.today():
+            license.status = LicenseStatus.EXPIRED
+            db.commit()
+            return HeartbeatResponse(
+                success=False,
+                message="License has expired"
             )
         
         # 6. 查找客户端
@@ -190,7 +218,7 @@ def heartbeat(
 
 # 状态API
 @router.post("/status", response_model=StatusResponse)
-def status(
+def check_status(
     request: StatusRequest,
     db: Session = Depends(get_db)
 ):

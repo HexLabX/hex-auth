@@ -5,7 +5,7 @@ from datetime import timedelta
 from app.core.database import get_db
 from app.core.jwt import create_access_token, verify_token
 from app.core.config import settings
-from app.models.admin_user import AdminUser
+from app.models.admin_user import AdminUser, AdminStatus
 from app.schemas.auth import LoginRequest, LoginResponse
 from app.utils.audit_utils import create_audit_log
 import bcrypt
@@ -38,6 +38,9 @@ def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends
     admin = db.query(AdminUser).filter(AdminUser.username == username).first()
     if admin is None:
         raise credentials_exception
+    # 已被禁用的管理员，其存量令牌立即失效
+    if admin.status == AdminStatus.DISABLED:
+        raise credentials_exception
     return admin
 
 # 登录路由
@@ -54,6 +57,14 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 拒绝被禁用的管理员登录
+    if admin.status == AdminStatus.DISABLED:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is disabled",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

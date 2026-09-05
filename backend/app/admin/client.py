@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -13,8 +13,8 @@ router = APIRouter()
 # 查询客户端实例列表
 @router.get("/", response_model=List[ClientResponse])
 def get_clients(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     status: ClientStatus = None,
     product_code: str = None,
     license_id: int = None,
@@ -67,12 +67,9 @@ def disable_client(
             detail="Client not found"
         )
     
-    # 禁用客户端
+    # 禁用客户端，并与审计日志同事务提交
     client.status = ClientStatus.DISABLED
-    
-    db.commit()
-    db.refresh(client)
-    
+
     # 记录审计日志
     create_audit_log(
         db=db,
@@ -80,9 +77,13 @@ def disable_client(
         action="禁用",
         target_type="客户端实例",
         target_id=client.id,
-        target_instance=client
+        target_instance=client,
+        commit=False
     )
-    
+
+    db.commit()
+    db.refresh(client)
+
     return client
 
 # 启用客户端实例
@@ -99,12 +100,9 @@ def enable_client(
             detail="Client not found"
         )
     
-    # 启用客户端
+    # 启用客户端，并与审计日志同事务提交
     client.status = ClientStatus.NORMAL
-    
-    db.commit()
-    db.refresh(client)
-    
+
     # 记录审计日志
     create_audit_log(
         db=db,
@@ -112,9 +110,13 @@ def enable_client(
         action="启用",
         target_type="客户端实例",
         target_id=client.id,
-        target_instance=client
+        target_instance=client,
+        commit=False
     )
-    
+
+    db.commit()
+    db.refresh(client)
+
     return client
 
 # 删除客户端实例
@@ -131,18 +133,19 @@ def delete_client(
             detail="Client not found"
         )
     
-    # 记录审计日志
+    # 记录审计日志，并与删除同事务提交
     create_audit_log(
         db=db,
         admin_username=current_admin.username,
         action="删除",
         target_type="客户端实例",
         target_id=client.id,
-        target_instance=client
+        target_instance=client,
+        commit=False
     )
-    
+
     # 删除客户端
     db.delete(client)
     db.commit()
-    
+
     return None
