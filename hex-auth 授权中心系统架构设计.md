@@ -43,6 +43,7 @@ hex-auth 是一个 **统一在线授权中心**，为 GUI / CLI / Service / Plug
 | ORM | SQLAlchemy |
 | 数据库 | MySQL 8.x |
 | 鉴权 | JWT（Admin） |
+| 私钥保护 | Fernet 对称加密（cryptography） |
 | 授权签名 | RSA |
 
 ### 2.2 前端

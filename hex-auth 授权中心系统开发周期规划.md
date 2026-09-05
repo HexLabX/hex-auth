@@ -52,7 +52,7 @@ hex-auth 是一个 **统一在线授权中心**，为 GUI / CLI / Service / Plug
 
 #### 3.2.3 核心设计要点
 
-- 每个产品拥有独立RSA密钥对，存储在products表
+- 每个产品拥有独立RSA密钥对，以主密钥（Fernet）加密后存储在products表
 - License与Product强绑定，支持限制最大实例数
 - Client与License强绑定，记录客户端指纹和心跳状态
 - AuditLog记录所有关键管理操作，支持可追溯性
