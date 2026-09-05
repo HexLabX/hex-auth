@@ -144,6 +144,14 @@ hex-auth/
   ```bash
   mysql -u user -p hex_auth < backup.sql
   ```
+- **自动备份**：使用 `scripts/backup.sh`（自动从 `backend/.env` 读取连接信息，gzip 压缩并按保留天数清理旧备份）：
+  ```bash
+  # 手动执行：备份到指定目录，保留14天
+  ./scripts/backup.sh /var/backups/hex-auth 14
+
+  # crontab 每天凌晨3点自动备份
+  # 0 3 * * * /path/to/hex-auth/scripts/backup.sh /var/backups/hex-auth 14 >> /var/log/hex-auth-backup.log 2>&1
+  ```
 
 ## 部署
 
@@ -194,14 +202,25 @@ docker run -d --name hex-auth-backend -p 8000:8000 --env-file ./backend/.env hex
 docker run -d --name hex-auth-frontend -p 8080:80 hex-auth-frontend
 ```
 
-#### 4. 配置服务器Nginx
+#### 4. 配置服务器Nginx（HTTPS）
 
-在 `/etc/nginx/conf.d/` 目录下创建 `hex-auth.conf` 文件：
+授权码与令牌属于敏感数据，生产环境必须走 HTTPS。在 `/etc/nginx/conf.d/` 目录下创建 `hex-auth.conf` 文件：
 
 ```nginx
+# HTTP 跳转 HTTPS
 server {
     listen 80;
     server_name www.shiliu.icu;  # 替换为您的域名
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name www.shiliu.icu;  # 替换为您的域名
+
+    ssl_certificate     /etc/nginx/ssl/fullchain.pem;   # 替换为证书路径
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
     
     # 前端代理
     location / {
@@ -239,6 +258,15 @@ server {
         proxy_read_timeout 60s;
     }
 }
+```
+
+证书可用 Let's Encrypt 免费签发并自动续期：
+
+```bash
+# 安装 certbot 后签发证书（以Ubuntu为例）
+certbot certonly --nginx -d www.shiliu.icu
+# 证书位于 /etc/letsencrypt/live/www.shiliu.icu/，
+# 将上面 nginx 配置中的 ssl_certificate 路径指向它，certbot 会自动续期
 ```
 
 #### 5. 重启Nginx服务
