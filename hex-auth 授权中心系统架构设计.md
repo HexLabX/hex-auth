@@ -44,7 +44,6 @@ hex-auth 是一个 **统一在线授权中心**，为 GUI / CLI / Service / Plug
 | 数据库 | MySQL 8.x |
 | 鉴权 | JWT（Admin） |
 | 授权签名 | RSA |
-| 数据迁移 | Alembic |
 
 ### 2.2 前端
 
@@ -360,7 +359,6 @@ backend/
 │   ├── schemas/        # 数据校验与序列化
 │   ├── services/       # 业务逻辑层
 │   └── main.py         # 应用入口
-├── alembic/            # 数据迁移
 └── requirements.txt    # 依赖管理
 ```
 

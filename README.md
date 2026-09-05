@@ -24,7 +24,6 @@ hex-auth 是一个功能完整的授权中心系统，用于管理软件产品�
 ```
 hex-auth/
 ├── backend/                  # 后端代码
-│   ├── alembic/              # 数据库迁移工具
 │   ├── app/                  # 应用主目录
 │   │   ├── admin/            # 管理员API
 │   │   ├── api/              # 客户端API
@@ -128,6 +127,18 @@ hex-auth/
    ```bash
    npm run build
    ```
+
+### 数据库重建与恢复
+
+- **重建（新库）**：`python create_db.py` 创建数据库，`python create_admin.py` 按当前模型自动建表并初始化管理员
+- **备份**：
+  ```bash
+  mysqldump -u user -p hex_auth > backup_$(date +%F).sql
+  ```
+- **恢复（已有数据）**：用 SQL 备份文件恢复：
+  ```bash
+  mysql -u user -p hex_auth < backup.sql
+  ```
 
 ## 部署
 
@@ -425,8 +436,7 @@ server {
 1. 创建数据模型 (`app/models/`)
 2. 创建数据验证模式 (`app/schemas/`)
 3. 创建API路由 (`app/admin/` 或 `app/api/`)
-4. 运行数据库迁移: `alembic revision --autogenerate -m "message"`
-5. 应用迁移: `alembic upgrade head`
+4. 如修改了数据模型：新库由 `create_admin.py` 启动时自动按模型建表；已有数据库需手动执行 `ALTER TABLE` SQL 升级
 
 ### 前端开发
 1. 创建页面组件 (`src/pages/`)
