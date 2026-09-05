@@ -2,7 +2,8 @@
 核心授权流程回归测试。
 
 覆盖：客户端审计日志、禁用客户端不可自我解禁、管理员状态校验、
-激活设备数限制与并发行锁、client_type 校验、心跳过期检查、产品删除保护。
+激活设备数限制与并发行锁、client_type 校验、心跳过期检查、产品删除保护、
+登录限流与失败审计、公开接口IP限流、RSA私钥加密存储与历史明文自动升级。
 
 运行方式（任选其一）：
     cd backend && python -m pytest tests/ -v
@@ -16,17 +17,24 @@ from datetime import date, timedelta
 # config.py 在导入时读取必填环境变量，需在导入 app 之前设置
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
+# 仅测试用的 Fernet 主密钥（非生产密钥）
+os.environ.setdefault("RSA_MASTER_KEY", "HBn-QQPaf3YrtQhIIA2UjC4Qsg4zrebAzo2OO9xNEms=")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import bcrypt
+from cryptography.fernet import Fernet
 from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
+from starlette.requests import Request as HttpRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
-from app.core.rsa import generate_license_token, generate_rsa_key_pair
+from app.core.crypto import decrypt_private_key, encrypt_private_key, is_encrypted_private_key
+from app.core.rsa import generate_license_token, generate_rsa_key_pair, verify_license_token
 from app.core.jwt import create_access_token
+from app.core.config import settings
 from app.models.admin_user import AdminUser, AdminStatus
 from app.models.product import Product
 from app.models.license import License, LicenseStatus
@@ -34,10 +42,14 @@ from app.models.client import Client, ClientStatus, ClientType
 from app.models.audit_log import AuditLog
 from app.api.v1.license import activate, heartbeat
 from app.schemas.license_api import ActivateRequest, HeartbeatRequest
+from app.schemas.product import ProductCreate
 from app.admin import auth as admin_auth
 from app.admin import client as admin_client
 from app.admin import product as admin_product
 from app.utils.audit_utils import create_audit_log
+
+# 测试专用的自增IP，保证各测试间限流计数互不干扰
+_ip_counter = [0]
 
 
 def make_db():
@@ -46,8 +58,16 @@ def make_db():
     return sessionmaker(bind=engine)()
 
 
+def fake_request(ip: str = None) -> HttpRequest:
+    """构造带 client IP 的假 HTTP 请求（端点签名需要 Request 参数）。"""
+    if ip is None:
+        _ip_counter[0] += 1
+        ip = f"10.0.{_ip_counter[0] // 250}.{_ip_counter[0] % 250 + 1}"
+    return HttpRequest({"type": "http", "client": (ip, 12345), "headers": []})
+
+
 def make_fixtures(db):
-    """创建一个可用产品 + 授权（max_devices=2）"""
+    """创建一个可用产品 + 授权（max_devices=2），私钥为明文（模拟历史数据）"""
     private_key, public_key = generate_rsa_key_pair()
     product = Product(
         product_code="TEST_PRD",
@@ -65,6 +85,25 @@ def make_fixtures(db):
     db.commit()
     return product, license
 
+
+def make_admin(db, username: str, password: str = "password123",
+               status: AdminStatus = AdminStatus.ENABLED) -> AdminUser:
+    admin = AdminUser(
+        username=username,
+        password_hash=bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
+        status=status,
+    )
+    db.add(admin)
+    db.commit()
+    return admin
+
+
+def try_login(db, username: str, password: str, ip: str):
+    form = OAuth2PasswordRequestForm(username=username, password=password, scope="")
+    return admin_auth.login(request=fake_request(ip), form_data=form, db=db)
+
+
+# ---------- 原有回归点 ----------
 
 def test_client_audit_log_uses_client_fp():
     """审计日志自动收集 Client 详情时使用存在的字段（回归：client_key AttributeError）"""
@@ -96,7 +135,7 @@ def test_disabled_client_cannot_reactivate():
     db.add(client)
     db.commit()
 
-    resp = activate(ActivateRequest(
+    resp = activate(fake_request(), ActivateRequest(
         license_key=license.license_key,
         client_fp="FP-DISABLED-01",
         client_type="gui",
@@ -120,7 +159,7 @@ def test_abnormal_client_can_recover():
     db.add(client)
     db.commit()
 
-    resp = activate(ActivateRequest(
+    resp = activate(fake_request(), ActivateRequest(
         license_key=license.license_key,
         client_fp="FP-ABNORMAL-01",
         client_type="gui",
@@ -137,7 +176,7 @@ def test_invalid_client_type_rejected():
     db = make_db()
     _, license = make_fixtures(db)
 
-    resp = activate(ActivateRequest(
+    resp = activate(fake_request(), ActivateRequest(
         license_key=license.license_key,
         client_fp="FP-NEWDEV-01",
         client_type="desktop",
@@ -159,7 +198,7 @@ def test_activate_respects_max_devices():
     ])
     db.commit()
 
-    resp = activate(ActivateRequest(
+    resp = activate(fake_request(), ActivateRequest(
         license_key=license.license_key,
         client_fp="FP-DEV-003",
         client_type="cli",
@@ -181,7 +220,7 @@ def test_reactivation_not_blocked_by_own_seat():
     ])
     db.commit()
 
-    resp = activate(ActivateRequest(
+    resp = activate(fake_request(), ActivateRequest(
         license_key=license.license_key,
         client_fp="FP-DEV-002",
         client_type="gui",
@@ -211,7 +250,7 @@ def test_heartbeat_rejects_expired_license():
         expire_at=9999999999,
         private_key=product.private_key,
     )
-    resp = heartbeat(HeartbeatRequest(token=token), db)
+    resp = heartbeat(fake_request(), HeartbeatRequest(token=token), db)
 
     assert resp.success is False
     assert resp.message == "License has expired"
@@ -222,17 +261,10 @@ def test_heartbeat_rejects_expired_license():
 def test_disabled_admin_cannot_login():
     """被禁用的管理员无法登录"""
     db = make_db()
-    import bcrypt
-    db.add(AdminUser(
-        username="disabled_admin",
-        password_hash=bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode(),
-        status=AdminStatus.DISABLED,
-    ))
-    db.commit()
+    make_admin(db, "disabled_admin", status=AdminStatus.DISABLED)
 
-    form = OAuth2PasswordRequestForm(username="disabled_admin", password="password123", scope="")
     try:
-        admin_auth.login(form_data=form, db=db)
+        try_login(db, "disabled_admin", "password123", ip="10.9.0.1")
         raise AssertionError("expected HTTPException")
     except HTTPException as e:
         assert e.status_code == 401
@@ -315,6 +347,172 @@ def test_delete_product_with_licenses_rejected():
         assert e.status_code == 409
     # 产品未被删除
     assert db.query(Product).filter(Product.id == product.id).first() is not None
+
+
+# ---------- 登录限流与失败审计 ----------
+
+def test_failed_login_audited():
+    """登录失败（密码错误）会留下审计日志，含IP"""
+    db = make_db()
+    make_admin(db, "audit_admin")
+
+    try:
+        try_login(db, "audit_admin", "wrong-password", ip="10.9.0.2")
+        raise AssertionError("expected HTTPException")
+    except HTTPException as e:
+        assert e.status_code == 401
+
+    log = db.query(AuditLog).filter(
+        AuditLog.admin_username == "audit_admin", AuditLog.action == "登录失败"
+    ).first()
+    assert log is not None
+    assert log.detail["ip"] == "10.9.0.2"
+    assert "密码" in log.detail["reason"]
+
+
+def test_login_rate_limited():
+    """同一用户名+IP 连续失败达到上限后，返回 429"""
+    db = make_db()
+    make_admin(db, "bruteforce_admin")
+    ip = "10.9.0.3"
+
+    for _ in range(settings.LOGIN_MAX_FAILURES):
+        try:
+            try_login(db, "bruteforce_admin", "wrong-password", ip=ip)
+        except HTTPException as e:
+            assert e.status_code == 401
+
+    try:
+        try_login(db, "bruteforce_admin", "wrong-password", ip=ip)
+        raise AssertionError("expected HTTPException")
+    except HTTPException as e:
+        assert e.status_code == 429
+
+
+def test_login_success_resets_failures():
+    """登录成功会清除失败计数，不会误伤正常用户"""
+    db = make_db()
+    make_admin(db, "normal_admin")
+    ip = "10.9.0.4"
+
+    for _ in range(settings.LOGIN_MAX_FAILURES - 1):
+        try:
+            try_login(db, "normal_admin", "wrong-password", ip=ip)
+        except HTTPException as e:
+            assert e.status_code == 401
+
+    # 成功登录一次
+    resp = try_login(db, "normal_admin", "password123", ip=ip)
+    assert resp["access_token"]
+
+    # 再次失败若干次仍返回 401（计数已清零），而非 429
+    for _ in range(settings.LOGIN_MAX_FAILURES - 1):
+        try:
+            try_login(db, "normal_admin", "wrong-password", ip=ip)
+        except HTTPException as e:
+            assert e.status_code == 401
+
+
+def test_activate_rate_limited():
+    """同一IP频繁调用激活接口，超过限制后返回 429"""
+    db = make_db()
+    make_fixtures(db)
+    ip = "10.9.0.5"
+    req = ActivateRequest(license_key="INVALID-KEY-0000", client_fp="FP-RATELIMIT-1", client_type="gui")
+
+    for _ in range(settings.ACTIVATE_RATE_LIMIT_PER_MINUTE):
+        resp = activate(fake_request(ip), req, db)
+        assert resp.success is False  # 无效key，但请求被计数
+
+    try:
+        activate(fake_request(ip), req, db)
+        raise AssertionError("expected HTTPException")
+    except HTTPException as e:
+        assert e.status_code == 429
+
+
+# ---------- RSA私钥加密存储 ----------
+
+def test_private_key_encrypted_on_create():
+    """创建产品时私钥以加密形式入库"""
+    db = make_db()
+    admin = AdminUser(username="creator", password_hash="x", status=AdminStatus.ENABLED)
+    db.add(admin)
+    db.commit()
+
+    created = admin_product.create_product(
+        product=ProductCreate(product_code="ENC_PRD", name="加密测试产品"),
+        db=db, current_admin=admin,
+    )
+
+    assert is_encrypted_private_key(created.private_key)
+    # 公钥保持明文
+    assert created.public_key.startswith("-----BEGIN PUBLIC KEY-----")
+
+
+def test_activate_works_with_encrypted_key():
+    """加密存储的私钥可以正常签发令牌，且令牌可用公钥验证"""
+    db = make_db()
+    admin = AdminUser(username="creator2", password_hash="x", status=AdminStatus.ENABLED)
+    db.add(admin)
+    db.commit()
+
+    product = admin_product.create_product(
+        product=ProductCreate(product_code="ENC_PRD2", name="加密激活测试"),
+        db=db, current_admin=admin,
+    )
+    license = License(
+        license_key="ENC-KEY-12345678",
+        product_code=product.product_code,
+        max_devices=1,
+        expire_at=date.today() + timedelta(days=365),
+    )
+    db.add(license)
+    db.commit()
+
+    resp = activate(fake_request(), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-ENC-001",
+        client_type="gui",
+    ), db)
+
+    assert resp.success is True
+    assert verify_license_token(resp.token, product.public_key) is True
+
+
+def test_legacy_plaintext_key_upgraded_on_activate():
+    """历史明文私钥在激活时保持兼容，并自动升级为加密存储"""
+    db = make_db()
+    product, license = make_fixtures(db)  # make_fixtures 写入的是明文私钥
+    assert not is_encrypted_private_key(product.private_key)
+    plaintext = product.private_key
+
+    resp = activate(fake_request(), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-LEGACY-01",
+        client_type="gui",
+    ), db)
+
+    assert resp.success is True
+    db.refresh(product)
+    assert is_encrypted_private_key(product.private_key)
+    # 升级后解密结果与原明文一致
+    assert decrypt_private_key(product.private_key) == plaintext
+
+
+def test_wrong_master_key_rejected():
+    """主密钥不匹配时解密报错并给出清晰提示"""
+    stored = encrypt_private_key("-----TEST-----")
+    original = settings.RSA_MASTER_KEY
+    try:
+        settings.RSA_MASTER_KEY = Fernet.generate_key().decode()
+        try:
+            decrypt_private_key(stored)
+            raise AssertionError("expected ValueError")
+        except ValueError as e:
+            assert "RSA_MASTER_KEY" in str(e)
+    finally:
+        settings.RSA_MASTER_KEY = original
 
 
 if __name__ == "__main__":
