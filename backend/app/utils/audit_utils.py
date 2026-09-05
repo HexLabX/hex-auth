@@ -57,7 +57,7 @@ def create_audit_log(
         elif isinstance(target_instance, Client):
             auto_detail = {
                 "client_id": target_instance.id,
-                "client_key": target_instance.client_key,
+                "client_fp": target_instance.client_fp,
                 "product_code": target_instance.product_code,
                 "license_id": target_instance.license_id,
                 "status": target_instance.status
