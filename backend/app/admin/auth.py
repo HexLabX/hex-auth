@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from app.core.database import get_db
 from app.core.jwt import create_access_token, verify_token
 from app.core.config import settings
+from app.core.rate_limit import rate_limiter
 from app.models.admin_user import AdminUser, AdminStatus
 from app.schemas.auth import LoginRequest, LoginResponse
 from app.utils.audit_utils import create_audit_log
+from app.utils.request import get_client_ip
 import bcrypt
 
 router = APIRouter()
@@ -46,28 +48,61 @@ def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends
 # 登录路由
 @router.post("/login", response_model=LoginResponse)
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    client_ip = get_client_ip(request)
+    # 限流按「用户名+IP」统计失败次数，登录成功后清零
+    failure_key = f"login:{form_data.username.lower()}:{client_ip}"
+    if rate_limiter.is_blocked(
+        failure_key, settings.LOGIN_MAX_FAILURES, settings.LOGIN_FAILURE_WINDOW_SECONDS
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="登录失败次数过多，请稍后再试",
+        )
+
     # 查询管理员
     admin = db.query(AdminUser).filter(AdminUser.username == form_data.username).first()
-    
-    # 验证管理员和密码
+
+    # 验证管理员和密码（失败计次并记录审计日志）
     if not admin or not verify_password(form_data.password, admin.password_hash):
+        rate_limiter.record_failure(failure_key, settings.LOGIN_FAILURE_WINDOW_SECONDS)
+        create_audit_log(
+            db=db,
+            admin_username=form_data.username[:50],
+            action="登录失败",
+            target_type="管理员",
+            target_id=form_data.username[:50],
+            detail={"ip": client_ip, "reason": "用户名或密码错误"}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 拒绝被禁用的管理员登录
+    # 拒绝被禁用的管理员登录（同样计次并留审计）
     if admin.status == AdminStatus.DISABLED:
+        rate_limiter.record_failure(failure_key, settings.LOGIN_FAILURE_WINDOW_SECONDS)
+        create_audit_log(
+            db=db,
+            admin_username=admin.username[:50],
+            action="登录失败",
+            target_type="管理员",
+            target_id=admin.id,
+            detail={"ip": client_ip, "reason": "账号已禁用"}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account is disabled",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # 登录成功，清除失败计数
+    rate_limiter.reset(failure_key)
+
     # 更新登录时间
     from datetime import datetime, timezone
     admin.last_login = datetime.now(timezone.utc)
