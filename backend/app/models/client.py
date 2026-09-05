@@ -23,7 +23,7 @@ class Client(Base):
     client_fp = Column(String(100), nullable=False, comment="客户端指纹")
     client_type = Column(Enum(ClientType), nullable=False, comment="客户端类型")
     ip_address = Column(String(50), nullable=True, comment="客户端IP地址")
-    last_heartbeat = Column(DateTime(timezone=True), onupdate=func.now(), comment="最后心跳时间")
+    last_heartbeat = Column(DateTime(timezone=True), nullable=True, comment="最后心跳时间")
     status = Column(Enum(ClientStatus), default=ClientStatus.NORMAL, comment="状态")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
     

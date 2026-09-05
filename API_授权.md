@@ -55,6 +55,7 @@ hex-auth 是一个统一的在线授权中心，为多形态程序提供在线�
 {
   "success": true,
   "message": "Activation successful",
+  "heartbeat_interval": 3600,
   "token": {
     "token": {
       "iss": "hex-auth",
@@ -75,6 +76,7 @@ hex-auth 是一个统一的在线授权中心，为多形态程序提供在线�
 | --- | --- | --- |
 | success | boolean | 激活是否成功 |
 | message | string | 响应消息 |
+| heartbeat_interval | int | 产品配置的心跳间隔（秒），客户端按此间隔发送心跳 |
 | token | object | 授权令牌，包含 token 数据和 signature 签名 |
 | token.token | object | 令牌数据，包含授权信息和有效期 |
 | token.signature | string | 令牌签名，用于验证令牌完整性 |
@@ -92,7 +94,7 @@ hex-auth 是一个统一的在线授权中心，为多形态程序提供在线�
 
 **端点**: `/license/heartbeat`
 
-**功能**: 维持客户端与服务器的连接，更新客户端最后心跳时间
+**功能**: 维持客户端与服务器的连接，更新客户端最后心跳时间与来源IP
 
 **请求格式**:
 

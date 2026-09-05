@@ -117,6 +117,7 @@ def activate(
         # 异常状态的客户端恢复为正常
         existing_client.status = ClientStatus.NORMAL
         existing_client.last_heartbeat = datetime.utcnow()
+        existing_client.ip_address = get_client_ip(request)
     else:
         # 7. 创建新客户端
         client = Client(
@@ -124,6 +125,7 @@ def activate(
             product_code=license.product_code,
             client_fp=request_body.client_fp,
             client_type=client_type,
+            ip_address=get_client_ip(request),
             status=ClientStatus.NORMAL
         )
         db.add(client)
@@ -156,7 +158,8 @@ def activate(
     return ActivateResponse(
         success=True,
         message="Activation successful",
-        token=token
+        token=token,
+        heartbeat_interval=product.heartbeat_interval
     )
 
 # 心跳API
@@ -229,8 +232,9 @@ def heartbeat(
                 message="Client has been disabled"
             )
         
-        # 7. 更新心跳时间
+        # 7. 更新心跳时间与来源IP
         client.last_heartbeat = datetime.utcnow()
+        client.ip_address = get_client_ip(request)
         db.commit()
         
         return HeartbeatResponse(

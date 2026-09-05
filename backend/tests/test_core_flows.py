@@ -12,7 +12,7 @@
 
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 # config.py 在导入时读取必填环境变量，需在导入 app 之前设置
 os.environ.setdefault("DATABASE_URL", "sqlite://")
@@ -47,6 +47,7 @@ from app.admin import auth as admin_auth
 from app.admin import client as admin_client
 from app.admin import product as admin_product
 from app.utils.audit_utils import create_audit_log
+from app.core.offline_monitor import mark_offline_clients
 
 # 测试专用的自增IP，保证各测试间限流计数互不干扰
 _ip_counter = [0]
@@ -513,6 +514,138 @@ def test_wrong_master_key_rejected():
             assert "RSA_MASTER_KEY" in str(e)
     finally:
         settings.RSA_MASTER_KEY = original
+
+
+# ---------- 心跳间隔返回与客户端IP记录 ----------
+
+def test_activate_returns_heartbeat_interval():
+    """激活响应携带产品配置的心跳间隔，客户端无需硬编码"""
+    db = make_db()
+    _, license = make_fixtures(db)
+
+    resp = activate(fake_request(), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-INTERVAL-01",
+        client_type="gui",
+    ), db)
+
+    assert resp.success is True
+    assert resp.heartbeat_interval == 3600
+
+
+def test_activate_records_client_ip():
+    """激活时记录客户端IP；同设备从新IP重新激活会更新记录"""
+    db = make_db()
+    _, license = make_fixtures(db)
+
+    resp = activate(fake_request(ip="203.0.113.7"), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-IPCHECK-01",
+        client_type="gui",
+    ), db)
+    assert resp.success is True
+
+    client = db.query(Client).filter(Client.client_fp == "FP-IPCHECK-01").first()
+    assert client.ip_address == "203.0.113.7"
+
+    # 同一设备换IP重新激活
+    activate(fake_request(ip="203.0.113.8"), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-IPCHECK-01",
+        client_type="gui",
+    ), db)
+    db.refresh(client)
+    assert client.ip_address == "203.0.113.8"
+
+
+def test_heartbeat_updates_client_ip():
+    """心跳会刷新客户端的来源IP"""
+    db = make_db()
+    product, license = make_fixtures(db)
+    # 激活会把明文私钥升级为密文，签发token需要激活前的明文私钥
+    plain_private_key = product.private_key
+
+    activate(fake_request(ip="198.51.100.1"), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-HBIP-01",
+        client_type="gui",
+    ), db)
+    client = db.query(Client).filter(Client.client_fp == "FP-HBIP-01").first()
+    assert client.ip_address == "198.51.100.1"
+
+    token = generate_license_token(
+        product=product.product_code,
+        license_key=license.license_key,
+        client_fp="FP-HBIP-01",
+        expire_at=9999999999,
+        private_key=plain_private_key,
+    )
+    resp = heartbeat(fake_request(ip="198.51.100.2"), HeartbeatRequest(token=token), db)
+
+    assert resp.success is True
+    db.refresh(client)
+    assert client.ip_address == "198.51.100.2"
+
+
+# ---------- 心跳离线检测 ----------
+
+def test_offline_monitor_marks_stale_clients():
+    """超过倍数阈值未心跳的客户端被标记 ABNORMAL；在线与禁用的不受影响"""
+    db = make_db()
+    product, license = make_fixtures(db)  # 心跳间隔 3600，默认3倍阈值 = 10800秒
+
+    now = datetime.utcnow()
+    db.add_all([
+        # 离线设备：4小时未心跳
+        Client(license_id=license.id, product_code=license.product_code,
+               client_fp="FP-STALE-01", client_type=ClientType.GUI,
+               ip_address="10.1.0.1", last_heartbeat=now - timedelta(hours=4),
+               status=ClientStatus.NORMAL),
+        # 在线设备：刚心跳
+        Client(license_id=license.id, product_code=license.product_code,
+               client_fp="FP-FRESH-01", client_type=ClientType.GUI,
+               ip_address="10.1.0.2", last_heartbeat=now - timedelta(minutes=5),
+               status=ClientStatus.NORMAL),
+        # 管理员禁用设备：虽长时间无心跳，但不被离线检测触碰
+        Client(license_id=license.id, product_code=license.product_code,
+               client_fp="FP-BANNED-01", client_type=ClientType.GUI,
+               ip_address="10.1.0.3", last_heartbeat=now - timedelta(hours=48),
+               status=ClientStatus.DISABLED),
+    ])
+    db.commit()
+
+    marked = mark_offline_clients(db)
+
+    assert marked == 1
+    assert db.query(Client).filter(Client.client_fp == "FP-STALE-01").first().status == ClientStatus.ABNORMAL
+    assert db.query(Client).filter(Client.client_fp == "FP-FRESH-01").first().status == ClientStatus.NORMAL
+    assert db.query(Client).filter(Client.client_fp == "FP-BANNED-01").first().status == ClientStatus.DISABLED
+
+
+def test_offline_monitor_recovers_via_reactivation():
+    """被标记离线的客户端重新激活后恢复正常"""
+    db = make_db()
+    product, license = make_fixtures(db)
+
+    now = datetime.utcnow()
+    client = Client(license_id=license.id, product_code=license.product_code,
+                    client_fp="FP-RECOVER-01", client_type=ClientType.GUI,
+                    ip_address="10.1.0.9", last_heartbeat=now - timedelta(hours=8),
+                    status=ClientStatus.NORMAL)
+    db.add(client)
+    db.commit()
+    assert mark_offline_clients(db) == 1
+    db.refresh(client)
+    assert client.status == ClientStatus.ABNORMAL
+
+    resp = activate(fake_request(), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-RECOVER-01",
+        client_type="gui",
+    ), db)
+    assert resp.success is True
+    db.refresh(client)
+    assert client.status == ClientStatus.NORMAL
 
 
 if __name__ == "__main__":

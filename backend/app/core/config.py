@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     ACTIVATE_RATE_LIMIT_PER_MINUTE: int = 10
     HEARTBEAT_RATE_LIMIT_PER_MINUTE: int = 120
 
+    # 心跳离线检测：每 CLIENT_OFFLINE_CHECK_SECONDS 秒扫描一次，
+    # 超过 CLIENT_OFFLINE_MULTIPLIER 倍产品心跳间隔未上报的客户端标记为 ABNORMAL
+    CLIENT_OFFLINE_CHECK_SECONDS: int = 60
+    CLIENT_OFFLINE_MULTIPLIER: int = 3
+
     # 服务器配置
     SERVER_HOST: str = "0.0.0.0"
     SERVER_PORT: int = 8000

@@ -1,11 +1,24 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.offline_monitor import offline_monitor_loop
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 应用启动时开启心跳离线检测后台任务，关闭时停止
+    monitor = asyncio.create_task(offline_monitor_loop())
+    yield
+    monitor.cancel()
+
 
 app = FastAPI(
     title="hex-auth 授权中心",
     description="统一在线授权中心，为多形态程序提供在线激活、心跳校验、授权吊销与后台管理能力",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # 配置CORS（白名单通过 CORS_ALLOW_ORIGINS 环境变量配置）
