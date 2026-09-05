@@ -42,7 +42,6 @@ hex-auth 是一个 **统一在线授权中心**，为 GUI / CLI / Service / Plug
 | Web 框架 | FastAPI |
 | ORM | SQLAlchemy |
 | 数据库 | MySQL 8.x |
-| 缓存 | Redis |
 | 鉴权 | JWT（Admin） |
 | 授权签名 | RSA |
 | 数据迁移 | Alembic |
@@ -85,7 +84,7 @@ hex-auth 是一个 **统一在线授权中心**，为 GUI / CLI / Service / Plug
 │  ├─ Heartbeat                             │
 │  └─ Status                                │
 ├────────────────────────────────────────────┤
-│ MySQL / Redis                             │
+│ MySQL                                     │
 └────────────────────────────────────────────┘
 ```
 
