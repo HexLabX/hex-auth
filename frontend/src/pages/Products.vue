@@ -1,7 +1,6 @@
 <template>
   <div class="products-page">
     <div class="page-header">
-      <h2>产品管理</h2>
       <button class="add-btn" @click="showCreateModal = true">
         <Icon :icon="icons.add" />
         添加产品
@@ -446,13 +445,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
 .add-btn {
   display: flex;
   align-items: center;
@@ -561,9 +553,10 @@ onMounted(() => {
 /* 表格容器 */
 .products-table-wrapper {
   background-color: #fff;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   overflow: hidden;
 }
 

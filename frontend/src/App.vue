@@ -1,5 +1,6 @@
 <template>
-  <n-config-provider :theme-overrides="themeOverrides">
+  <!-- abstract：不渲染包装div，保持 height:100% 链条不被破坏 -->
+  <n-config-provider abstract :theme-overrides="themeOverrides">
     <div id="app">
       <router-view />
     </div>
