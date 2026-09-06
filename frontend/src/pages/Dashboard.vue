@@ -6,8 +6,6 @@
     </div>
 
     <template v-else>
-      <h2>仪表盘</h2>
-
       <!-- 服务健康状态 -->
       <div class="health-section">
         <h3>服务健康状态</h3>
@@ -44,9 +42,6 @@
             <span class="stat-icon"><Icon :icon="icons.products" /></span>
           </div>
           <div class="stat-value">{{ stats.productCount }}</div>
-          <div class="stat-trend">
-            <span class="trend-up">↑ +10%</span> 较上月
-          </div>
         </div>
         <div class="stat-card">
           <div class="stat-header">
@@ -54,9 +49,6 @@
             <span class="stat-icon"><Icon :icon="icons.licenses" /></span>
           </div>
           <div class="stat-value">{{ stats.licenseCount }}</div>
-          <div class="stat-trend">
-            <span class="trend-up">↑ +15%</span> 较上月
-          </div>
         </div>
         <div class="stat-card">
           <div class="stat-header">
@@ -64,9 +56,6 @@
             <span class="stat-icon"><Icon :icon="icons.clients" /></span>
           </div>
           <div class="stat-value">{{ stats.activeClientCount }}</div>
-          <div class="stat-trend">
-            <span class="trend-down">↓ -5%</span> 较上月
-          </div>
         </div>
         <div class="stat-card">
           <div class="stat-header">
@@ -74,9 +63,6 @@
             <span class="stat-icon"><Icon :icon="icons.check" /></span>
           </div>
           <div class="stat-value">{{ stats.todayActivations }}</div>
-          <div class="stat-trend">
-            <span class="trend-up">↑ +20%</span> 较昨日
-          </div>
         </div>
       </div>
 
@@ -186,9 +172,9 @@ onMounted(() => {
 
 .skeleton-activity {
   background-color: #fff;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   min-height: 200px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
@@ -213,15 +199,16 @@ onMounted(() => {
 
 .stat-card {
   background-color: #fff;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
 }
 
 .stat-header {
@@ -239,14 +226,19 @@ onMounted(() => {
 }
 
 .stat-icon {
-  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background-color: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .stat-icon :deep(svg) {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
 }
 
 .stat-value {
@@ -256,24 +248,12 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-.stat-trend {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.trend-up {
-  color: #10b981;
-}
-
-.trend-down {
-  color: #ef4444;
-}
-
 .recent-activity {
   background-color: #fff;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
 .recent-activity h3 {
@@ -355,9 +335,10 @@ onMounted(() => {
 .health-section {
   margin-bottom: 32px;
   background-color: #fff;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
 .health-section h3 {
@@ -377,32 +358,38 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 16px;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  border-left: 4px solid #ef4444;
-}
-
-.health-card.healthy {
-  border-left-color: #10b981;
-  background-color: #f0fdf4;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .health-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
 }
 
 .health-icon {
-  font-size: 32px;
-  margin-right: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background-color: #fef2f2;
+  color: #dc2626;
+  margin-right: 14px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.health-card.healthy .health-icon {
+  background-color: #ecfdf5;
+  color: #059669;
 }
 
 .health-icon :deep(svg) {
-  width: 32px;
-  height: 32px;
+  width: 19px;
+  height: 19px;
 }
 
 .health-content {
@@ -417,12 +404,12 @@ onMounted(() => {
 }
 
 .health-status {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #ef4444;
+  color: #dc2626;
 }
 
 .health-card.healthy .health-status {
-  color: #10b981;
+  color: #059669;
 }
 </style>

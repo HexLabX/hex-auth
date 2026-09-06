@@ -1,11 +1,14 @@
 <template>
-  <div id="app">
-    <router-view />
-  </div>
+  <n-config-provider :theme-overrides="themeOverrides">
+    <div id="app">
+      <router-view />
+    </div>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
-// 登录状态检查已移至路由守卫
+import { NConfigProvider } from 'naive-ui'
+import { themeOverrides } from './theme'
 </script>
 
 <style>
@@ -19,9 +22,13 @@ html,
 body {
   width: 100%;
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: #f5f7fa;
-  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: #f6f7f9;
+  color: #111827;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
@@ -36,16 +43,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d1d5db;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #9ca3af;
 }
 </style>

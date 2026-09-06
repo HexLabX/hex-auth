@@ -2,7 +2,13 @@
   <div class="main-layout">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h1>hex-auth</h1>
+        <div class="brand-mark">
+          <Icon :icon="icons.licenses" />
+        </div>
+        <div class="brand-text">
+          <h1>hex-auth</h1>
+          <span>授权中心</span>
+        </div>
       </div>
       <nav class="sidebar-nav">
         <router-link
@@ -23,13 +29,13 @@
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="nav-right">
-          <button class="profile-btn" @click="goToProfile" title="个人中心">
+          <button class="ghost-btn" @click="goToProfile" title="个人中心">
             <Icon :icon="icons.user" />
-            <span class="profile-text">个人中心</span>
+            <span class="btn-text">个人中心</span>
           </button>
-          <button class="logout-btn" @click="logout" title="退出登录">
+          <button class="ghost-btn danger" @click="logout" title="退出登录">
             <Icon :icon="icons.logout" />
-            <span class="logout-text">退出</span>
+            <span class="btn-text">退出</span>
           </button>
         </div>
       </header>
@@ -82,62 +88,95 @@ const logout = () => {
   display: flex;
   width: 100%;
   height: 100%;
-  background-color: #f5f7fa;
+  background-color: #f6f7f9;
   overflow: hidden;
 }
 
+/* ---------- 侧边栏 ---------- */
 .sidebar {
-  width: 240px;
-  background-color: #1e293b;
+  width: 232px;
+  background-color: #0f172a;
   color: #fff;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.sidebar-header h1 {
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background-color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-mark :deep(svg) {
+  width: 17px;
+  height: 17px;
+  color: #fff;
+}
+
+.brand-text h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.brand-text span {
+  font-size: 11px;
+  color: #64748b;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 20px 0;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 12px 20px;
-  color: #cbd5e1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #94a3b8;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nav-item:hover {
-  background-color: #334155;
-  color: #fff;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
 }
 
 .nav-item.active {
-  background-color: #3b82f6;
+  background-color: rgba(37, 99, 235, 0.18);
   color: #fff;
 }
 
 .nav-icon {
-  margin-right: 12px;
+  margin-right: 11px;
   display: flex;
   align-items: center;
 }
 
 .nav-icon :deep(svg) {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .nav-text {
@@ -145,83 +184,73 @@ const logout = () => {
   font-weight: 500;
 }
 
+/* ---------- 主区域 ---------- */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .top-nav {
   height: 60px;
   background-color: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .nav-left h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: #1e293b;
+  letter-spacing: -0.01em;
+  color: #111827;
 }
 
 .nav-right {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
-.profile-btn,
-.logout-btn {
+.ghost-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
+  padding: 7px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.profile-btn :deep(svg),
-.logout-btn :deep(svg) {
-  width: 16px;
-  height: 16px;
-}
-
-.profile-btn {
-  background-color: #f8fafc;
+  background-color: #fff;
   color: #475569;
-  border: 1px solid #e2e8f0;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.profile-btn:hover {
-  background-color: #e2e8f0;
-  border-color: #cbd5e1;
+.ghost-btn :deep(svg) {
+  width: 15px;
+  height: 15px;
 }
 
-.profile-text {
-  display: inline-block;
+.ghost-btn:hover {
+  background-color: #f6f7f9;
+  color: #111827;
 }
 
-.logout-btn {
-  background-color: #ef4444;
-  color: #fff;
+.ghost-btn.danger:hover {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
 }
 
-.logout-btn:hover {
-  background-color: #dc2626;
-}
-
-.logout-text {
-  display: inline-block;
+.ghost-btn:active {
+  transform: translateY(0.5px);
 }
 
 .content {
@@ -229,7 +258,6 @@ const logout = () => {
   padding: 24px;
   overflow-y: auto;
   box-sizing: border-box;
-  /* 确保内容在全屏模式下能正确滚动 */
   min-height: 0;
 }
 </style>

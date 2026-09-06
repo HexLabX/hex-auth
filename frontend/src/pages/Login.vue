@@ -1,39 +1,65 @@
 <template>
-  <div class="login-container">
-    <div class="login-form-wrapper">
-      <div class="login-header">
-        <h1>hex-auth</h1>
-        <p>统一在线授权中心</p>
+  <div class="login-page">
+    <!-- 左侧品牌面板（窄屏隐藏） -->
+    <div class="brand-panel">
+      <div class="brand-inner">
+        <div class="brand-mark">
+          <Icon :icon="icons.licenses" />
+        </div>
+        <h1 class="brand-name">hex-auth</h1>
+        <p class="brand-slogan">统一在线授权中心</p>
+        <ul class="brand-features">
+          <li>
+            <Icon :icon="icons.check" />
+            <span>多产品独立密钥与授权签发</span>
+          </li>
+          <li>
+            <Icon :icon="icons.check" />
+            <span>设备绑定、心跳与远程禁用</span>
+          </li>
+          <li>
+            <Icon :icon="icons.check" />
+            <span>关键操作全程审计</span>
+          </li>
+        </ul>
       </div>
+    </div>
+
+    <!-- 右侧表单区 -->
+    <div class="form-panel">
       <form class="login-form" @submit.prevent="handleLogin">
+        <h2 class="form-title">管理后台登录</h2>
+        <p class="form-subtitle">使用管理员账号进入 hex-auth 控制台</p>
+
         <div class="form-group">
           <label for="username">用户名</label>
-          <input 
-            type="text" 
-            id="username" 
+          <input
+            id="username"
+            type="text"
             v-model="loginForm.username"
             placeholder="请输入用户名"
+            autocomplete="username"
             required
           >
         </div>
+
         <div class="form-group">
           <label for="password">密码</label>
-          <input 
-            type="password" 
-            id="password" 
+          <input
+            id="password"
+            type="password"
             v-model="loginForm.password"
             placeholder="请输入密码"
+            autocomplete="current-password"
             required
           >
         </div>
-        <div class="form-actions">
-          <button type="submit" class="login-btn" :disabled="isLoading">
-            {{ isLoading ? '登录中...' : '登录' }}
-          </button>
-        </div>
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
+
+        <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+
+        <button type="submit" class="login-btn" :disabled="isLoading">
+          {{ isLoading ? '登录中...' : '登录' }}
+        </button>
       </form>
     </div>
   </div>
@@ -42,6 +68,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
+import icons from '@/icons'
 import api from '@/api'
 
 const router = useRouter()
@@ -92,51 +120,137 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-container {
+.login-page {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  width: 100%;
   height: 100%;
-  background-color: #f5f7fa;
+  min-height: 100dvh;
+  background-color: #fff;
 }
 
-.login-form-wrapper {
-  width: 100%;
-  max-width: 400px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+/* ---------- 左侧品牌面板 ---------- */
+.brand-panel {
+  width: 45%;
+  max-width: 640px;
+  background-color: #0f172a;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 36px 36px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+.brand-inner {
+  padding: 48px 56px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.brand-mark :deep(svg) {
+  width: 22px;
+  height: 22px;
+  color: #fff;
+}
+
+.brand-name {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.brand-slogan {
+  margin: 8px 0 40px;
+  font-size: 15px;
+  color: #94a3b8;
+}
+
+.brand-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brand-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.brand-features li :deep(svg) {
+  width: 16px;
+  height: 16px;
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+/* ---------- 右侧表单区 ---------- */
+.form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 32px;
 }
 
-.login-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.login-header h1 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.login-header p {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
 .login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  width: 100%;
+  max-width: 360px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-form {
+    animation: form-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes form-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.form-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+
+.form-subtitle {
+  margin: 8px 0 32px;
+  font-size: 14px;
+  color: #64748b;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
@@ -146,38 +260,49 @@ const handleLogin = async () => {
 }
 
 .form-group input {
-  padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  padding: 11px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.2s ease;
+  color: #111827;
+  background-color: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.form-group input:hover {
+  border-color: #9ca3af;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-actions {
-  margin-top: 8px;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .login-btn {
   width: 100%;
+  margin-top: 8px;
   padding: 12px;
-  background-color: #3b82f6;
+  background-color: #2563eb;
   color: #fff;
   border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .login-btn:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #3b82f6;
+}
+
+.login-btn:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .login-btn:disabled {
@@ -186,9 +311,26 @@ const handleLogin = async () => {
 }
 
 .error-message {
-  margin-top: 16px;
-  color: #ef4444;
-  font-size: 14px;
-  text-align: center;
+  margin: -8px 0 12px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+/* ---------- 窄屏回退：隐藏品牌面板 ---------- */
+@media (max-width: 900px) {
+  .brand-panel {
+    display: none;
+  }
+
+  .form-panel {
+    background-color: #f6f7f9;
+  }
+
+  .login-form {
+    background-color: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 32px 28px;
+  }
 }
 </style>
