@@ -495,6 +495,4 @@ MIT License
 
 ## 联系方式
 
-如有问题或建议，请通过以下方式联系：
-- 项目地址：https://github.com/HexLabX/hex-auth
-- 邮箱：yshiliu@126.com
+如有问题或建议，请通过 [GitHub Issues](https://github.com/jiangyi-vento/hex-auth/issues) 反馈。
