@@ -204,6 +204,11 @@ docker run -d --name hex-auth-frontend -p 8080:80 hex-auth-frontend
 
 #### 4. 配置服务器Nginx（HTTPS）
 
+> ⚠️ **安全要求**：后端 8000 端口只允许本机访问（`docker run` 时不要加 `-p 8000:8000`，
+> 或用防火墙封禁外网访问），所有流量必须经 Nginx 反代进入。限流与审计依赖
+> `X-Real-IP` 请求头，该头由 Nginx 用真实客户端地址覆写；若后端直连公网，
+> 攻击者可伪造此头绕过限流。
+
 授权码与令牌属于敏感数据，生产环境必须走 HTTPS。在 `/etc/nginx/conf.d/` 目录下创建 `hex-auth.conf` 文件：
 
 ```nginx
