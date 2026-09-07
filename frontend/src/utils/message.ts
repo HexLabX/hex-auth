@@ -1,7 +1,9 @@
 import { createDiscreteApi } from 'naive-ui'
+import { themeOverrides } from '@/theme'
 
 const { message, notification, dialog } = createDiscreteApi(
-  ['message', 'notification', 'dialog']
+  ['message', 'notification', 'dialog'],
+  { configProviderProps: { themeOverrides } }
 )
 
 export { message, notification, dialog }

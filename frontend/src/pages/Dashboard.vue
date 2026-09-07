@@ -92,6 +92,7 @@ import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import icons from '@/icons'
 import api from '@/api'
+import { Message } from '@/utils/message'
 import CardSkeleton from '@/components/CardSkeleton.vue'
 
 // 统计数据
@@ -137,8 +138,8 @@ const fetchStats = async () => {
     stats.value = response.stats
     healthStatus.value = response.healthStatus
     recentActivities.value = response.recentActivities || []
-  } catch (error) {
-    console.error('Failed to fetch dashboard data:', error)
+  } catch (error: any) {
+    Message.error(error.response?.data?.detail || '仪表盘数据加载失败')
   } finally {
     isLoading.value = false
   }
