@@ -92,11 +92,11 @@ const logout = () => {
   overflow: hidden;
 }
 
-/* ---------- 侧边栏 ---------- */
+/* ---------- 侧边栏（浅色单色系） ---------- */
 .sidebar {
-  width: 232px;
-  background-color: #0f172a;
-  color: #fff;
+  width: 220px;
+  background-color: #f6f7f9;
+  border-right: 1px solid #ececef;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -105,16 +105,15 @@ const logout = () => {
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px 20px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 10px;
+  padding: 20px 16px 16px;
 }
 
 .brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background-color: #2563eb;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: #111827;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,65 +121,72 @@ const logout = () => {
 }
 
 .brand-mark :deep(svg) {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
   color: #fff;
 }
 
 .brand-text h1 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.2;
+  color: #111827;
 }
 
 .brand-text span {
   font-size: 11px;
-  color: #64748b;
+  color: #9ca3af;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 14px 12px;
+  padding: 4px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: #94a3b8;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: #6b7280;
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
+  background-color: rgba(17, 24, 39, 0.04);
+  color: #111827;
 }
 
 .nav-item.active {
-  background-color: rgba(37, 99, 235, 0.18);
-  color: #fff;
+  background-color: rgba(17, 24, 39, 0.06);
+  color: #111827;
+  font-weight: 600;
 }
 
 .nav-icon {
-  margin-right: 11px;
+  margin-right: 10px;
   display: flex;
   align-items: center;
 }
 
 .nav-icon :deep(svg) {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.75;
+}
+
+.nav-item.active .nav-icon :deep(svg) {
+  opacity: 1;
 }
 
 .nav-text {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
 }
 
@@ -194,19 +200,18 @@ const logout = () => {
 }
 
 .top-nav {
-  height: 60px;
-  background-color: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  height: 56px;
+  background-color: transparent;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 28px;
   flex-shrink: 0;
 }
 
 .nav-left h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: #111827;
@@ -222,30 +227,29 @@ const logout = () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 7px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  background-color: #fff;
-  color: #475569;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  background-color: transparent;
+  color: #6b7280;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .ghost-btn :deep(svg) {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .ghost-btn:hover {
-  background-color: #f6f7f9;
+  background-color: rgba(17, 24, 39, 0.05);
   color: #111827;
 }
 
 .ghost-btn.danger:hover {
   background-color: #fef2f2;
-  border-color: #fecaca;
   color: #dc2626;
 }
 
@@ -255,7 +259,7 @@ const logout = () => {
 
 .content {
   flex: 1;
-  padding: 24px;
+  padding: 4px 28px 28px;
   overflow-y: auto;
   box-sizing: border-box;
   min-height: 0;

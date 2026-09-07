@@ -149,8 +149,8 @@ const handleLogin = async () => {
 .brand-mark {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
-  background-color: #2563eb;
+  border-radius: 11px;
+  background-color: #111827;
   display: flex;
   align-items: center;
   justify-content: center;
