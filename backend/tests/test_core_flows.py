@@ -414,6 +414,58 @@ def test_login_success_resets_failures():
             assert e.status_code == 401
 
 
+def test_password_change_invalidates_old_token():
+    """修改密码递增令牌版本，旧JWT立即失效"""
+    db = make_db()
+    admin = make_admin(db, "pw_admin")
+
+    old_token_resp = try_login(db, "pw_admin", "password123", ip="10.9.1.1")
+    old_token = old_token_resp["access_token"]
+
+    # 修改密码（错误旧密码应被拒绝）
+    try:
+        admin_auth.change_password(
+            old_password="wrong", new_password="newpass456", db=db, current_admin=admin
+        )
+        raise AssertionError("expected HTTPException")
+    except HTTPException as e:
+        assert e.status_code == 400
+
+    admin_auth.change_password(
+        old_password="password123", new_password="newpass456", db=db, current_admin=admin
+    )
+
+    # 旧令牌失效
+    try:
+        admin_auth.get_current_admin(token=old_token, db=db)
+        raise AssertionError("expected HTTPException")
+    except HTTPException as e:
+        assert e.status_code == 401
+
+    # 新密码重新登录成功，新令牌可用
+    resp = try_login(db, "pw_admin", "newpass456", ip="10.9.1.2")
+    assert resp["access_token"]
+    assert admin_auth.get_current_admin(token=resp["access_token"], db=db).username == "pw_admin"
+
+
+def test_login_ip_level_lock():
+    """轮换不同用户名失败，同一IP累计达到上限后同样触发429"""
+    db = make_db()
+    ip = "10.9.1.3"
+    for i in range(settings.LOGIN_IP_MAX_FAILURES):
+        try:
+            try_login(db, f"ghost_user_{i}", "whatever", ip=ip)
+        except HTTPException as e:
+            assert e.status_code == 401
+
+    # IP锁已触发：即使换全新用户名也返回429（而非401）
+    try:
+        try_login(db, "brand_new_user", "whatever", ip=ip)
+        raise AssertionError("expected HTTPException")
+    except HTTPException as e:
+        assert e.status_code == 429
+
+
 def test_activate_rate_limited():
     """同一IP频繁调用激活接口，超过限制后返回 429"""
     db = make_db()
