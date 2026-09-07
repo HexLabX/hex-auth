@@ -1,47 +1,52 @@
 <template>
-  <div class="login-container">
-    <div class="login-form-wrapper">
-      <div class="login-header">
-        <h1>hex-auth</h1>
-        <p>统一在线授权中心</p>
+  <div class="login-page">
+    <form class="login-card" @submit.prevent="handleLogin">
+      <div class="brand-mark">
+        <Icon :icon="icons.licenses" />
       </div>
-      <form class="login-form" @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label for="username">用户名</label>
-          <input 
-            type="text" 
-            id="username" 
-            v-model="loginForm.username"
-            placeholder="请输入用户名"
-            required
-          >
-        </div>
-        <div class="form-group">
-          <label for="password">密码</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="loginForm.password"
-            placeholder="请输入密码"
-            required
-          >
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="login-btn" :disabled="isLoading">
-            {{ isLoading ? '登录中...' : '登录' }}
-          </button>
-        </div>
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-      </form>
-    </div>
+      <h1 class="login-title">登录到 hex-auth</h1>
+      <p class="login-subtitle">授权中心管理后台</p>
+
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input
+          id="username"
+          type="text"
+          v-model="loginForm.username"
+          placeholder="请输入用户名"
+          autocomplete="username"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input
+          id="password"
+          type="password"
+          v-model="loginForm.password"
+          placeholder="请输入密码"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+
+      <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+
+      <button type="submit" class="login-btn" :disabled="isLoading">
+        {{ isLoading ? '登录中...' : '登录' }}
+      </button>
+    </form>
+
+    <p class="page-footer">统一在线授权中心</p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
+import icons from '@/icons'
 import api from '@/api'
 
 const router = useRouter()
@@ -92,103 +97,154 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  background-color: #f5f7fa;
-}
-
-.login-form-wrapper {
-  width: 100%;
-  max-width: 400px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 32px;
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.login-header h1 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.login-header p {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.login-form {
+.login-page {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background-color: #f6f7f9;
+  background-image: radial-gradient(circle, #e3e5e9 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 328px;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 32px 28px 28px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-card {
+    animation: card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background-color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.brand-mark :deep(svg) {
+  width: 19px;
+  height: 19px;
+  color: #fff;
+}
+
+.login-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #111827;
+  text-align: center;
+}
+
+.login-subtitle {
+  margin: 6px 0 26px;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #334155;
+  color: #475569;
 }
 
 .form-group input {
-  padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.2s ease;
+  color: #111827;
+  background-color: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.form-group input:hover {
+  border-color: #9ca3af;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-actions {
-  margin-top: 8px;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .login-btn {
   width: 100%;
-  padding: 12px;
-  background-color: #3b82f6;
+  margin-top: 8px;
+  padding: 11px;
+  background-color: #111827;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .login-btn:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #1f2937;
+}
+
+.login-btn:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .login-btn:disabled {
-  background-color: #93c5fd;
+  background-color: #9ca3af;
   cursor: not-allowed;
 }
 
 .error-message {
-  margin-top: 16px;
-  color: #ef4444;
-  font-size: 14px;
-  text-align: center;
+  margin: 0 0 14px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.page-footer {
+  position: absolute;
+  bottom: 24px;
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
 }
 </style>

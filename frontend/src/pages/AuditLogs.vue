@@ -1,7 +1,6 @@
 <template>
   <div class="audit-logs-page">
     <div class="page-header">
-      <h2>审计日志</h2>
       <div class="header-actions">
         <button
           class="clear-btn"
@@ -106,13 +105,11 @@
             </td>
             <td>
               <span class="user-badge">
-                <Icon :icon="icons.user" />
                 {{ log.admin_username }}
               </span>
             </td>
             <td>
               <span class="action-badge" :class="getActionClass(log.action)">
-                <Icon :icon="getActionIcon(log.action)" />
                 {{ log.action }}
               </span>
             </td>
@@ -432,13 +429,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
 .header-actions {
   display: flex;
   gap: 12px;
@@ -574,9 +564,10 @@ onMounted(() => {
 /* 表格容器 */
 .audit-logs-table-wrapper {
   background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   overflow: hidden;
 }
 
@@ -587,15 +578,25 @@ onMounted(() => {
 
 .audit-logs-table th,
 .audit-logs-table td {
-  padding: 12px;
+  padding: 13px 16px;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.audit-logs-table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+.audit-logs-table tbody tr:hover {
+  background-color: #fafafa;
 }
 
 .audit-logs-table th {
-  font-weight: 600;
-  color: #1e293b;
-  background-color: #f8fafc;
+  font-weight: 500;
+  font-size: 12.5px;
+  color: #9ca3af;
+  background-color: transparent;
+  white-space: nowrap;
 }
 
 .audit-logs-table tr.selected {
@@ -623,13 +624,12 @@ onMounted(() => {
 .user-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
   font-weight: 500;
-  background-color: #e0f2fe;
-  color: #0369a1;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .user-badge :deep(svg) {
@@ -640,11 +640,12 @@ onMounted(() => {
 .action-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .action-badge :deep(svg) {
@@ -652,44 +653,25 @@ onMounted(() => {
   height: 14px;
 }
 
-.action-badge.create {
-  background-color: #d1fae5;
-  color: #065f46;
+/* 操作类型只用三档语义色：破坏性红 / 正向绿 / 中性灰 */
+.action-badge.delete,
+.action-badge.disable,
+.action-badge.revoke,
+.action-badge.logout {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.action-badge.create,
+.action-badge.enable,
+.action-badge.login {
+  background-color: #ecfdf5;
+  color: #047857;
 }
 
 .action-badge.update {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
-
-.action-badge.delete {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.action-badge.enable {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.action-badge.disable {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.action-badge.revoke {
-  background-color: #f3e8ff;
-  color: #6b21a8;
-}
-
-.action-badge.login {
-  background-color: #e0e7ff;
-  color: #4338ca;
-}
-
-.action-badge.logout {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .target-id {

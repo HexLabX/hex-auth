@@ -213,9 +213,10 @@ onMounted(() => {
 .info-card,
 .password-card {
   background-color: #fff;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   padding: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
 .info-card h2,

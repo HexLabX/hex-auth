@@ -1,7 +1,6 @@
 <template>
   <div class="clients-page">
     <div class="page-header">
-      <h2>客户端管理</h2>
       <button class="refresh-btn" @click="fetchClients" :disabled="isLoading">
         <Icon :icon="icons.refresh" />
         刷新
@@ -74,7 +73,6 @@
             <td>{{ client.product_code }}</td>
             <td>
               <span class="type-badge">
-                <Icon :icon="getTypeIcon(client.client_type)" />
                 {{ client.client_type }}
               </span>
             </td>
@@ -82,7 +80,6 @@
             <td>{{ formatDate(client.last_heartbeat) }}</td>
             <td>
               <span class="status-badge" :class="client.status">
-                <Icon :icon="getStatusIcon(client.status)" />
                 {{ getStatusText(client.status) }}
               </span>
             </td>
@@ -403,13 +400,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
 .refresh-btn {
   display: flex;
   align-items: center;
@@ -501,9 +491,10 @@ onMounted(() => {
 /* 表格容器 */
 .clients-table-wrapper {
   background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   overflow: hidden;
 }
 
@@ -514,15 +505,25 @@ onMounted(() => {
 
 .clients-table th,
 .clients-table td {
-  padding: 12px;
+  padding: 13px 16px;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.clients-table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+.clients-table tbody tr:hover {
+  background-color: #fafafa;
 }
 
 .clients-table th {
-  font-weight: 600;
-  color: #1e293b;
-  background-color: #f8fafc;
+  font-weight: 500;
+  font-size: 12.5px;
+  color: #9ca3af;
+  background-color: transparent;
+  white-space: nowrap;
 }
 
 .clients-table td code {
@@ -553,9 +554,8 @@ onMounted(() => {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -566,18 +566,18 @@ onMounted(() => {
 }
 
 .status-badge.normal {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: #ecfdf5;
+  color: #047857;
 }
 
 .status-badge.abnormal {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: #fffbeb;
+  color: #b45309;
 }
 
 .status-badge.disabled {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: #fef2f2;
+  color: #b91c1c;
 }
 
 .action-buttons {
