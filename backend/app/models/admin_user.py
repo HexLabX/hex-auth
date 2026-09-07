@@ -14,5 +14,6 @@ class AdminUser(Base):
     username = Column(String(50), unique=True, index=True, nullable=False, comment="用户名")
     password_hash = Column(String(255), nullable=False, comment="密码哈希值")
     status = Column(Enum(AdminStatus), default=AdminStatus.ENABLED, comment="状态")
+    token_version = Column(Integer, nullable=False, default=0, server_default="0", comment="令牌版本，修改密码后递增使旧令牌失效")
     last_login = Column(DateTime(timezone=True), nullable=True, comment="最后登录时间")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")

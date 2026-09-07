@@ -1,7 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import pinia from './stores'
 import { createDiscreteApi } from 'naive-ui'
 import { themeOverrides } from './theme'
 import 'nprogress/nprogress.css'
@@ -20,8 +19,6 @@ app.provide('message', message)
 app.provide('notification', notification)
 app.provide('dialog', dialog)
 
-// 使用插件
 app.use(router)
-app.use(pinia)
 
 app.mount('#app')

@@ -36,9 +36,13 @@ def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    username = verify_token(token, credentials_exception)
+    payload = verify_token(token, credentials_exception)
+    username = payload.get("sub")
     admin = db.query(AdminUser).filter(AdminUser.username == username).first()
     if admin is None:
+        raise credentials_exception
+    # 令牌版本不匹配（改密后旧令牌）立即失效
+    if payload.get("ver", 0) != admin.token_version:
         raise credentials_exception
     # 已被禁用的管理员，其存量令牌立即失效
     if admin.status == AdminStatus.DISABLED:
@@ -55,8 +59,12 @@ def login(
     client_ip = get_client_ip(request)
     # 限流按「用户名+IP」统计失败次数，登录成功后清零
     failure_key = f"login:{form_data.username.lower()}:{client_ip}"
+    # 第二把锁：纯 IP 维度，防轮换用户名灌审计或单IP分布式爆破
+    ip_key = f"login-ip:{client_ip}"
     if rate_limiter.is_blocked(
         failure_key, settings.LOGIN_MAX_FAILURES, settings.LOGIN_FAILURE_WINDOW_SECONDS
+    ) or rate_limiter.is_blocked(
+        ip_key, settings.LOGIN_IP_MAX_FAILURES, settings.LOGIN_FAILURE_WINDOW_SECONDS
     ):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -69,6 +77,7 @@ def login(
     # 验证管理员和密码（失败计次并记录审计日志）
     if not admin or not verify_password(form_data.password, admin.password_hash):
         rate_limiter.record_failure(failure_key, settings.LOGIN_FAILURE_WINDOW_SECONDS)
+        rate_limiter.record_failure(ip_key, settings.LOGIN_FAILURE_WINDOW_SECONDS)
         create_audit_log(
             db=db,
             admin_username=form_data.username[:50],
@@ -86,6 +95,7 @@ def login(
     # 拒绝被禁用的管理员登录（同样计次并留审计）
     if admin.status == AdminStatus.DISABLED:
         rate_limiter.record_failure(failure_key, settings.LOGIN_FAILURE_WINDOW_SECONDS)
+        rate_limiter.record_failure(ip_key, settings.LOGIN_FAILURE_WINDOW_SECONDS)
         create_audit_log(
             db=db,
             admin_username=admin.username[:50],
@@ -121,7 +131,7 @@ def login(
     # 创建访问令牌
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": admin.username},
+        data={"sub": admin.username, "ver": admin.token_version},
         expires_delta=access_token_expires
     )
     
@@ -159,8 +169,9 @@ def change_password(
             detail="新密码长度不能少于6位"
         )
 
-    # 更新密码
+    # 更新密码并递增令牌版本，使所有旧令牌立即失效
     current_admin.password_hash = get_password_hash(new_password)
+    current_admin.token_version += 1
     db.commit()
 
     # 记录审计日志

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
-from datetime import datetime, timezone
 from typing import List
 from app.core.database import get_db
 from app.models.admin_user import AdminUser
@@ -31,9 +30,6 @@ def get_dashboard_data(
     db: Session = Depends(get_db),
     current_admin: AdminUser = Depends(get_current_admin)
 ):
-    # 获取当前日期（UTC）
-    today = datetime.now(timezone.utc).date()
-    
     # 计算产品数量
     product_count = db.query(func.count(Product.id)).scalar() or 0
     
@@ -46,8 +42,9 @@ def get_dashboard_data(
     ).scalar() or 0
 
     # 计算今日激活数量（按客户端激活记录统计）
+    # 用数据库自身时钟比较，避免应用UTC日期与MySQL会话时区错位
     today_activations = db.query(func.count(Client.id)).filter(
-        func.date(Client.created_at) == today
+        func.date(Client.created_at) == func.date(func.now())
     ).scalar() or 0
 
     # 获取近期活动（最近10条）
