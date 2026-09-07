@@ -18,10 +18,12 @@ class Settings(BaseSettings):
     # 登录限流：窗口期内按「用户名+IP」计的最大失败次数
     LOGIN_MAX_FAILURES: int = 5
     LOGIN_FAILURE_WINDOW_SECONDS: int = 900
+    # 第二把锁：纯 IP 维度的失败上限，防轮换用户名灌审计/单IP分布式爆破
+    LOGIN_IP_MAX_FAILURES: int = 30
 
     # 公开接口限流（按IP，固定窗口为1分钟）
     ACTIVATE_RATE_LIMIT_PER_MINUTE: int = 10
-    HEARTBEAT_RATE_LIMIT_PER_MINUTE: int = 120
+    HEARTBEAT_RATE_LIMIT_PER_MINUTE: int = 300
 
     # 心跳离线检测：每 CLIENT_OFFLINE_CHECK_SECONDS 秒扫描一次，
     # 超过 CLIENT_OFFLINE_MULTIPLIER 倍产品心跳间隔未上报的客户端标记为 ABNORMAL
