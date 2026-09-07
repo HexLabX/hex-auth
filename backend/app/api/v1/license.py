@@ -126,6 +126,8 @@ def activate(
             client_fp=request_body.client_fp,
             client_type=client_type,
             ip_address=get_client_ip(request),
+            # 激活即首次联络：没有这个初值，从未心跳的设备会一直显示在线
+            last_heartbeat=datetime.utcnow(),
             status=ClientStatus.NORMAL
         )
         db.add(client)
