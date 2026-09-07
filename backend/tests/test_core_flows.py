@@ -589,6 +589,30 @@ def test_heartbeat_updates_client_ip():
 
 # ---------- 心跳离线检测 ----------
 
+def test_activated_but_never_heartbeat_client_marked_offline():
+    """回归：激活时必须写入 last_heartbeat 初值，否则从未心跳的设备永远判不了离线"""
+    db = make_db()
+    _, license = make_fixtures(db)
+
+    resp = activate(fake_request(), ActivateRequest(
+        license_key=license.license_key,
+        client_fp="FP-NOHB-01",
+        client_type="gui",
+    ), db)
+    assert resp.success is True
+
+    client = db.query(Client).filter(Client.client_fp == "FP-NOHB-01").first()
+    # 激活即写入首次联络时间
+    assert client.last_heartbeat is not None
+
+    # 模拟长时间无心跳后，离线检测能将其标记为 ABNORMAL
+    client.last_heartbeat = datetime.utcnow() - timedelta(hours=8)
+    db.commit()
+    assert mark_offline_clients(db) == 1
+    db.refresh(client)
+    assert client.status == ClientStatus.ABNORMAL
+
+
 def test_offline_monitor_marks_stale_clients():
     """超过倍数阈值未心跳的客户端被标记 ABNORMAL；在线与禁用的不受影响"""
     db = make_db()
